@@ -1,19 +1,19 @@
 import sys
 sys.path.append("./")
+import time
 
-from thsr_ticket.remote.endpoint_client import EndpointClient
-from thsr_ticket.model.json.v1.train import Train
 from thsr_ticket.controller.booking_flow import BookingFlow
-
+from input_validation import input_profile
 
 def main():
-    flow = BookingFlow()
-    flow.run()
+    user_profile = input_profile()
+    booking_flag = True
+    while booking_flag:
+        flow = BookingFlow()
+        flow.data_dict = user_profile
+        _, booking_flag = flow.run()
+        time.sleep(1)
 
 
 if __name__ == "__main__":
-    #client = EndpointClient()
-    #resp = client.get_trains_by_date("2020-01-25")
-    #train = Train().from_json(resp[0])
-
     main()

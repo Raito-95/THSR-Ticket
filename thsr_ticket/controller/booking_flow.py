@@ -1,4 +1,5 @@
 from requests.models import Response
+from typing import Tuple, Optional
 
 from thsr_ticket.controller.confirm_train_flow import ConfirmTrainFlow
 from thsr_ticket.controller.confirm_ticket_flow import ConfirmTicketFlow
@@ -17,36 +18,45 @@ class BookingFlow:
         self.client = HTTPRequest()
         self.db = ParamDB()
         self.record = Record()
-
+        self.data_dict = {}
         self.error_feedback = ErrorFeedback()
         self.show_error_msg = ShowErrorMsg()
 
-    def run(self) -> Response:
-        self.show_history()
+    def run(self) -> Tuple[Optional[Response], bool]:
+        while True:
+            try:
+                # First page. Booking options
+                first_page_flow = FirstPageFlow(client=self.client, record=self.record, data_dict=self.data_dict)
+                book_resp, book_model = first_page_flow.run()
+                if self.show_error(book_resp.content):
+                    print('123')
+                    return book_resp, True
 
-        # First page. Booking options
-        book_resp, book_model = FirstPageFlow(client=self.client, record=self.record).run()
-        if self.show_error(book_resp.content):
-            return book_resp
+                # Second page. Train confirmation
+                confirm_train_flow = ConfirmTrainFlow(self.client, book_resp, data_dict=self.data_dict)
+                train_resp, train_model = confirm_train_flow.run()
+                if self.show_error(train_resp.content):
+                    print('456')
+                    return train_resp, True
 
-        # Second page. Train confirmation
-        train_resp, train_model = ConfirmTrainFlow(self.client, book_resp).run()
-        if self.show_error(train_resp.content):
-            return train_resp
+                # Final page. Ticket confirmation
+                confirm_ticket_flow = ConfirmTicketFlow(self.client, train_resp, data_dict=self.data_dict)
+                ticket_resp, ticket_model = confirm_ticket_flow.run()
+                if self.show_error(ticket_resp.content):
+                    print('789')
+                    return ticket_resp, True
 
-        # Final page. Ticket confirmation
-        ticket_resp, ticket_model = ConfirmTicketFlow(self.client, train_resp, self.record).run()
-        if self.show_error(ticket_resp.content):
-            return ticket_resp
+                # Result page.
+                result_model = BookingResult().parse(ticket_resp.content)
+                book = ShowBookingResult()
+                book.show(result_model)
+                print("\nPlease use the official channels provided to complete the subsequent payment and ticket retrieval!")
+                # self.db.save(book_model, ticket_model)
+                return ticket_resp, False
 
-        # Result page.
-        result_model = BookingResult().parse(ticket_resp.content)
-        book = ShowBookingResult()
-        book.show(result_model)
-        print("\n請使用官方提供的管道完成後續付款以及取票!!")
-
-        self.db.save(book_model, ticket_model)
-        return ticket_resp
+            except Exception as e:
+                print(f"An exception occurred during the booking process: {e}")
+                return None, True
 
     def show_history(self) -> None:
         hist = self.db.get_history()

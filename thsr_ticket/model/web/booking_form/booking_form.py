@@ -42,7 +42,7 @@ class BookingForm(AbstractParams):
         self.security_code: str = None  # Required
 
         # Auto set
-        self.seat_prefer: str = None
+        self.seat_prefer: str = "Window seat"
 
     def get_params(self, val: bool = True) -> Mapping[str, Any]:
         if self.inbound_date is None:

@@ -41,6 +41,9 @@ BOOKING_RESULT: Mapping[str, Any] = {
     "phone": {
         "text": "行動電話"
     },
+    "email": {
+        "text": "電子郵件"
+    },
     "info": {
         "name": "table",
         "attrs": {

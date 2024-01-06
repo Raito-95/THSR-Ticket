@@ -245,6 +245,11 @@ class ConfirmTicketModel(BaseModel):
         alias='TicketMemberSystemInputPanel:TakerMemberSystemDataView:memberSystemRadioGroup',
         description='非高鐵會員, 企業會員 / 高鐵會員 / 企業會員統編',
     )
+    member_account: str = Field(
+        ...,
+        alias='TicketMemberSystemInputPanel:TakerMemberSystemDataView:memberSystemRadioGroup:memberShipNumber',
+        description='同取票人身分證字號'
+    )
     form_mark: str = Field('', alias='BookingS3FormSP:hf:0')
     id_input_radio: int = Field(0, alias='idInputRadio', description='0: 身份證字號 / 1: 護照號碼')
     diff_over: int = Field(1, alias='diffOver')
