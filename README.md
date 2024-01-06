@@ -6,7 +6,7 @@ This script automates the booking process for Taiwan High-Speed Rail (THSR) tick
 
 - Automates ticket booking for THSR.
 - Validates user input for dates, times, and station numbers.
-- Selects the earliest available train based on the provided time slot.
+- Selects the train with the shortest travel time within an hour of the provided time slot.
 - Supports booking tickets for all THSR stations.
 
 ## System Requirements
