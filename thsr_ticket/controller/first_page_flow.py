@@ -77,9 +77,7 @@ class FirstPageFlow:
 
 
 def _parse_seat_prefer_value(page: BeautifulSoup) -> str:
-    options = page.find(**BOOKING_PAGE["seat_prefer_radio"])
-    preferred_seat = options.find_next(selected='selected')
-    return preferred_seat.attrs['value']
+    return "1"  # 靠窗優先
 
 
 def _parse_types_of_trip_value(page: BeautifulSoup) -> int:

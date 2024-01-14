@@ -29,21 +29,18 @@ class BookingFlow:
                 first_page_flow = FirstPageFlow(client=self.client, record=self.record, data_dict=self.data_dict)
                 book_resp, book_model = first_page_flow.run()
                 if self.show_error(book_resp.content):
-                    print('123')
                     return book_resp, True
 
                 # Second page. Train confirmation
                 confirm_train_flow = ConfirmTrainFlow(self.client, book_resp, data_dict=self.data_dict)
                 train_resp, train_model = confirm_train_flow.run()
                 if self.show_error(train_resp.content):
-                    print('456')
                     return train_resp, True
 
                 # Final page. Ticket confirmation
                 confirm_ticket_flow = ConfirmTicketFlow(self.client, train_resp, data_dict=self.data_dict)
                 ticket_resp, ticket_model = confirm_ticket_flow.run()
                 if self.show_error(ticket_resp.content):
-                    print('789')
                     return ticket_resp, True
 
                 # Result page.
