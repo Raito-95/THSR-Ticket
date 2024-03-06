@@ -120,7 +120,7 @@ CONFIRM_TICKET_SHEMA: Mapping[str, Any] = {
 
 class BaseModel(PydanticBaseModel):
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
         json_encoders = {
             date: lambda dt: dt.strftime('%Y/%m/%d')
         }
