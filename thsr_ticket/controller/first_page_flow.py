@@ -19,6 +19,7 @@ class FirstPageFlow:
         self.client = client
         self.record = record
         self.data_dict = data_dict
+        self.seat_prefer = "1"  # 靠窗優先
 
     def run(self) -> Tuple[Response, BookingModel]:
         book_page = self.client.request_booking_page().content
@@ -31,7 +32,7 @@ class FirstPageFlow:
             outbound_date=self.select_date(),
             outbound_time=self.select_time(),
             adult_ticket_num=self.select_ticket_num(TicketType.ADULT),
-            seat_prefer=_parse_seat_prefer_value(page),
+            seat_prefer=self.seat_prefer,
             types_of_trip=_parse_types_of_trip_value(page),
             search_by=_parse_search_by(page),
             security_code=_input_security_code(img_resp),
@@ -74,10 +75,6 @@ class FirstPageFlow:
 
         print(f'Selected {default_ticket_num} {ticket_type_name} Ticket(s)')
         return f'{default_ticket_num}{ticket_code}'
-
-
-def _parse_seat_prefer_value(page: BeautifulSoup) -> str:
-    return "1"  # 靠窗優先
 
 
 def _parse_types_of_trip_value(page: BeautifulSoup) -> int:

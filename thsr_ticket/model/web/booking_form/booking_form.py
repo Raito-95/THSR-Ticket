@@ -41,8 +41,8 @@ class BookingForm(AbstractParams):
         self._college_ticket_num: str = "0P"
         self.security_code: str = None  # Required
 
-        # Auto set
-        self.seat_prefer: str = None
+        # Window seat
+        self.seat_prefer: str = "1"
 
     def get_params(self, val: bool = True) -> Mapping[str, Any]:
         if self.inbound_date is None:
