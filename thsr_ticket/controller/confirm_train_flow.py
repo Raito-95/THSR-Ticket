@@ -40,7 +40,7 @@ class ConfirmTrainFlow:
 
         time_24hr = selected_time.replace('N', ' PM').replace('A', ' AM').replace('P', ' PM')
         desired_time = datetime.strptime(time_24hr, '%I%M %p').time()
-        end_time = (datetime.combine(datetime.today(), desired_time) + timedelta(hours=1)).time()
+        end_time = (datetime.combine(datetime.today(), desired_time) + timedelta(hours=0, minutes=30)).time()
 
         return [train for train in trains if desired_time <= datetime.strptime(train.depart, "%H:%M").time() <= end_time]
 
