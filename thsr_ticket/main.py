@@ -1,12 +1,13 @@
-import time
 import json
+import time
 import argparse
 from controller.booking_flow import BookingFlow
 from extra.input_validation import TicketBookingValidator
 
+
 def main(test_mode=False, test_file=None):
     if test_mode and test_file:
-        with open(test_file, 'r') as f:
+        with open(test_file, "r") as f:
             user_profile = json.load(f)
     else:
         validator = TicketBookingValidator()
@@ -18,9 +19,10 @@ def main(test_mode=False, test_file=None):
         _, booking_flag = flow.run()
         time.sleep(1)
 
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='THSR Ticket Booking')
-    parser.add_argument('-t', '--test', type=str, help='Test mode with JSON profile')
+    parser = argparse.ArgumentParser(description="THSR Ticket Booking")
+    parser.add_argument("-t", "--test", type=str, help="Test mode with JSON profile")
     args = parser.parse_args()
 
     if args.test:

@@ -1,9 +1,8 @@
 import io
 import json
-from PIL import Image
-from typing import Tuple, Dict
 from datetime import datetime
-
+from typing import Tuple, Dict
+from PIL import Image
 from bs4 import BeautifulSoup
 from requests.models import Response
 
@@ -83,9 +82,18 @@ class FirstPageFlow:
         input_time = self.data_dict[time_key]
         time_obj = datetime.strptime(input_time, "%H:%M")
         formatted_time = time_obj.strftime("%I:%M %p").upper()
-        
+
         for slot_time in AVAILABLE_TIME_TABLE:
-            slot_time_24hr = datetime.strptime(slot_time.replace("N", " PM").replace("A", " AM").replace("P", " PM"), "%I%M %p").strftime("%I:%M %p").upper()
+            slot_time_24hr = (
+                datetime.strptime(
+                    slot_time.replace("N", " PM")
+                    .replace("A", " AM")
+                    .replace("P", " PM"),
+                    "%I%M %p",
+                )
+                .strftime("%I:%M %p")
+                .upper()
+            )
             if slot_time_24hr == formatted_time:
                 print(f"Selected Departure Time: {formatted_time}")
                 return slot_time
@@ -96,11 +104,11 @@ class FirstPageFlow:
         self, ticket_type: TicketType, default_ticket_num: int = 1
     ) -> str:
         ticket_type_name = {
-            TicketType.ADULT: "成人",
-            TicketType.CHILD: "孩童",
-            TicketType.DISABLED: "愛心",
-            TicketType.ELDER: "敬老",
-            TicketType.COLLEGE: "大學生",
+            TicketType.ADULT: "Adult",
+            TicketType.CHILD: "Child",
+            TicketType.DISABLED: "Disabled",
+            TicketType.ELDER: "Elder",
+            TicketType.COLLEGE: "College",
         }.get(ticket_type)
 
         print(f"Selected {default_ticket_num} {ticket_type_name} Ticket(s)")
@@ -132,5 +140,5 @@ class FirstPageFlow:
     def input_security_code(self, img_resp: bytes) -> str:
         image = Image.open(io.BytesIO(img_resp))
         result = image_process.verify_code(image)
-        print(f"Verification Code: {result}\r\n")
+        print(f"Verification Code: {result}")
         return result

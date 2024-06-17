@@ -3,7 +3,6 @@ from typing import Tuple
 from bs4 import BeautifulSoup
 from requests.models import Response
 from configs.web.param_schema import ConfirmTicketModel
-
 from remote.http_request import HTTPRequest
 
 
