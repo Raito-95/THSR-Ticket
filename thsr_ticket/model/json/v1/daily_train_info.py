@@ -1,5 +1,5 @@
-from thsr_ticket.model.json.base_response import BaseResponse
-from thsr_ticket.model.json.v1.station_name import StationName
+from model.json.base_response import BaseResponse
+from model.json.v1.station_name import StationName
 
 
 class DailyTrainInfo(BaseResponse):

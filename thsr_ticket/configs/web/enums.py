@@ -13,12 +13,12 @@ class StationMapping(Enum):
     Yunlin = 9
     Chiayi = 10
     Tainan = 11
-    Zuouing = 12
+    Zuoying = 12
 
 
 class TicketType(Enum):
-    ADULT = 'F'
-    CHILD = 'H'
-    DISABLED = 'W'
-    ELDER = 'E'
-    COLLEGE = 'P'
+    ADULT = "F"
+    CHILD = "H"
+    DISABLED = "W"
+    ELDER = "E"
+    COLLEGE = "P"

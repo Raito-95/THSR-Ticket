@@ -1,6 +1,6 @@
-from thsr_ticket.model.json.base_response import BaseResponse
-from thsr_ticket.model.json.v1.daily_train_info import DailyTrainInfo
-from thsr_ticket.model.json.v1.stop_sequence import StopSequence
+from model.json.base_response import BaseResponse
+from model.json.v1.daily_train_info import DailyTrainInfo
+from model.json.v1.stop_sequence import StopSequence
 
 
 class Train(BaseResponse):

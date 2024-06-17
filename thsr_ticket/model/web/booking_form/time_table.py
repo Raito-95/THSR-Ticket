@@ -1,9 +1,9 @@
 from collections import namedtuple
 from typing import Iterable
 
-from thsr_ticket.configs.web.param_schema import BOOKING_SCHEMA
+from configs.web.param_schema import BOOKING_SCHEMA
 
-Table = namedtuple('Table', ['value', 'time'])
+Table = namedtuple("Table", ["value", "time"])
 
 
 class TimeTable:

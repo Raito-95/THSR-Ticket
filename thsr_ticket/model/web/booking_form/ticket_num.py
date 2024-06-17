@@ -1,7 +1,7 @@
 from collections import namedtuple
 from typing import Iterable
 
-Code = namedtuple('Code', ['value', 'code'])
+Code = namedtuple("Code", ["value", "code"])
 
 
 class BaseTicket:

@@ -11,31 +11,38 @@ This script automates the booking process for Taiwan High-Speed Rail (THSR) tick
 
 ## System Requirements
 
-- Python 3.6 or higher.
+- Python 3.10 or higher.
 - Internet connection.
 - Compatibility with Windows, macOS, and Linux.
 
 ## Installation
 
 1. **Clone the Repository**
-   ```shell
-   git clone https://github.com/Raito-95/THSR-Ticket.git
-   ```
-2. **Navigate to the Directory** 
-   ```shell
-   cd THSR-Ticket
-   ```
-3. **Install Required Packages** 
-   ```shell
-   python -m pip install -r requirements.txt
-   ```
+
+```shell
+git clone https://github.com/Raito-95/THSR-Ticket.git
+```
+
+2. **Navigate to the Directory**
+
+```shell
+cd THSR-Ticket
+```
+
+3. **Install Required Packages**
+
+```shell
+python -m pip install -r requirements.txt
+```
 
 ## Usage
 
 Run the script using Python:
-   ```shell
-   python ./thsr_ticket/main.py
-   ```
+
+```shell
+python ./thsr_ticket/main.py
+```
+
 Follow the script prompts to enter:
 
 * Start Station (1-12)
@@ -45,6 +52,14 @@ Follow the script prompts to enter:
 * ID Number
 * Phone Number
 * Email Address
+
+### Test Mode
+
+To run the script in test mode using a JSON file for input:
+
+```shell
+python ./thsr_ticket/main.py -t profile.json
+```
 
 ## Stations Reference
 
@@ -65,9 +80,10 @@ Follow the script prompts to enter:
 
 If you encounter any issues, please ensure:
 
-* Your Python version is 3.6 or higher.
+* Your Python version is 3.10 or higher.
 * All required packages are installed.
 * Your internet connection is stable.
 
 ## Disclaimer
+
 This script is for demonstration purposes only. Users should comply with THSR's booking website terms of use.

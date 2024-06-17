@@ -1,8 +1,8 @@
 from typing import Mapping, Any
 from jsonschema import validate
 
-from thsr_ticket.model.web.abstract_params import AbstractParams
-from thsr_ticket.configs.web.param_schema import CONFIRM_TRAIN_SCHEMA
+from model.web.abstract_params import AbstractParams
+from configs.web.param_schema import CONFIRM_TRAIN_SCHEMA
 
 
 class ConfirmTrain(AbstractParams):
@@ -13,7 +13,7 @@ class ConfirmTrain(AbstractParams):
     def get_params(self, val: bool = True) -> Mapping[str, Any]:
         params = {
             "BookingS2Form:hf:0": "",
-            "TrainQueryDataViewPanel:TrainGroup": self.selection
+            "TrainQueryDataViewPanel:TrainGroup": self.selection,
         }
 
         if val:
@@ -27,5 +27,7 @@ class ConfirmTrain(AbstractParams):
     @selection.setter
     def selection(self, value: str) -> None:
         if not value.startswith("radio"):
-            raise ValueError("Wrong prefix. Should start with 'radio', given: {}".format(value))
+            raise ValueError(
+                "Wrong prefix. Should start with 'radio', given: {}".format(value)
+            )
         self._selection = value

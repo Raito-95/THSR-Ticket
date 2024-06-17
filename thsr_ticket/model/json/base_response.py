@@ -7,11 +7,9 @@ class BaseResponse:
         pass
 
     def to_json(self) -> str:
-        # Returns: json string
-        # To get python object, use json.loads(json_str) externally
         return json.dumps(self, default=lambda o: o.__dict__)
 
-    def from_json(self, in_data: str) -> Any:  # noqa: F821
+    def from_json(self, in_data: str) -> Any:
         data = json.loads(in_data)
         for k in self.__dict__.keys():
             if isinstance(data[k], list):

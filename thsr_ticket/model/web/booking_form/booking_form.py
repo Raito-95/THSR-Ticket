@@ -3,8 +3,8 @@ from typing import Mapping, Any
 
 from jsonschema import validate
 
-from thsr_ticket.model.web.abstract_params import AbstractParams
-from thsr_ticket.configs.web.param_schema import BOOKING_SCHEMA
+from model.web.abstract_params import AbstractParams
+from configs.web.param_schema import BOOKING_SCHEMA
 
 
 class BookingForm(AbstractParams):
@@ -25,13 +25,13 @@ class BookingForm(AbstractParams):
             12: Zuoying
         """
         super(BookingForm, self).__init__()
-        self._start_station: int = None  # Required
-        self._dest_station: int = None  # Required
+        self._start_station: int = None
+        self._dest_station: int = None
         self._class_type: int = 0
-        self._search_by: str = None  # Required
+        self._search_by: str = None
         self._types_of_trip: int = 0
-        self._outbound_date: str = None  # Required
-        self._outbound_time: str = None  # Required
+        self._outbound_date: str = None
+        self._outbound_time: str = None
         self._inbound_date: str = None
         self._inbound_time: str = ""
         self._adult_ticket_num: str = "1F"
@@ -39,10 +39,9 @@ class BookingForm(AbstractParams):
         self._disabled_ticket_num: str = "0W"
         self._elder_ticket_num: str = "0E"
         self._college_ticket_num: str = "0P"
-        self.security_code: str = None  # Required
+        self.security_code: str = None
 
-        # Window seat
-        self.seat_prefer: str = "1"
+        self.seat_prefer: str = None
 
     def get_params(self, val: bool = True) -> Mapping[str, Any]:
         if self.inbound_date is None:
@@ -97,7 +96,7 @@ class BookingForm(AbstractParams):
 
     @types_of_trip.setter
     def types_of_trip(self, value: int) -> None:
-        self._validate_value('tripCon:typesoftrip', value)
+        self._validate_value("tripCon:typesoftrip", value)
         self._types_of_trip = value
 
     @property
@@ -125,7 +124,7 @@ class BookingForm(AbstractParams):
     @outbound_date.setter
     def outbound_date(self, value: str) -> None:
         date = self._validate_date(value)
-        if (date-datetime.now()) < timedelta(seconds=60):
+        if (date - datetime.now()) < timedelta(seconds=60):
             raise ValueError("Departure date should not be earlier than today")
         self._outbound_date = value
 
@@ -146,9 +145,11 @@ class BookingForm(AbstractParams):
     def inbound_date(self, value: str) -> None:
         in_date = self._validate_date(value)
         if self._outbound_date is not None:
-            out_date = datetime.strptime(self._outbound_date, '%Y/%m/%d')
+            out_date = datetime.strptime(self._outbound_date, "%Y/%m/%d")
             if out_date > in_date:
-                raise ValueError("Inbound date shouldn't be earlier than outbound date!")
+                raise ValueError(
+                    "Inbound date shouldn't be earlier than outbound date!"
+                )
 
         self._inbound_date = value
 
@@ -207,11 +208,14 @@ class BookingForm(AbstractParams):
         self._college_ticket_num = value
 
     def _validate_date(self, value: Any) -> datetime:
-        return datetime.strptime(value, '%Y/%m/%d')
+        return datetime.strptime(value, "%Y/%m/%d")
 
     def _validate_value(self, proper: str, value: Any) -> None:
         if (
-            (enums := BOOKING_SCHEMA["properties"][proper].get('enum'))
-            and value not in enums
-        ):
-            raise ValueError("Value '{}' is not allowed for this attribute '{}'".format(value, proper))
+            enums := BOOKING_SCHEMA["properties"][proper].get("enum")
+        ) and value not in enums:
+            raise ValueError(
+                "Value '{}' is not allowed for this attribute '{}'".format(
+                    value, proper
+                )
+            )

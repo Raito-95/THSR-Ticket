@@ -1,10 +1,9 @@
-from typing import List, Mapping
+from typing import List
 from bs4.element import Tag
 
-from thsr_ticket.view_model.abstract_view_model import AbstractViewModel
-from thsr_ticket.configs.web.parse_avail_train import ParseAvailTrain
-from thsr_ticket.configs.web.param_schema import Train
-
+from view_model.abstract_view_model import AbstractViewModel
+from configs.web.parse_avail_train import ParseAvailTrain
+from configs.web.param_schema import Train
 
 
 class AvailTrains(AbstractViewModel):
@@ -15,7 +14,7 @@ class AvailTrains(AbstractViewModel):
 
     def parse(self, html: bytes) -> List[Train]:
         page = self._parser(html)
-        avail = page.find_all('label', **self.cond.from_html)
+        avail = page.find_all("label", **self.cond.from_html)
         return self._parse_train(avail)
 
     def _parse_train(self, avail: List[Tag]) -> List[Train]:
@@ -23,11 +22,14 @@ class AvailTrains(AbstractViewModel):
             train_id = int(item.find(**self.cond.train_id).text)
             depart_time = item.find(**self.cond.depart).text
             arrival_time = item.find(**self.cond.arrival).text
-            travel_time = item.find(**self.cond.duration).find_next(
-                'span', {'class': 'material-icons'}
-            ).fetchNextSiblings()[0].text
+            travel_time = (
+                item.find(**self.cond.duration)
+                .find_next("span", {"class": "material-icons"})
+                .fetchNextSiblings()[0]
+                .text
+            )
             discount_str = self._parse_discount(item)
-            form_value = item.find(**self.cond.form_value).attrs['value']
+            form_value = item.find(**self.cond.form_value).attrs["value"]
             self.avail_trains.append(
                 Train(
                     id=train_id,
@@ -47,6 +49,6 @@ class AvailTrains(AbstractViewModel):
         if tag := item.find(**self.cond.college_student_discount):
             discounts.append(tag.find_next().text)
         if discounts:
-            joined_str = ', '.join(discounts)
-            return f'({joined_str})'
-        return ''
+            joined_str = ", ".join(discounts)
+            return f"({joined_str})"
+        return ""

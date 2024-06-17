@@ -1,72 +1,69 @@
+from typing import Tuple
 from requests.models import Response
-from typing import Tuple, Optional
 
-from thsr_ticket.controller.confirm_train_flow import ConfirmTrainFlow
-from thsr_ticket.controller.confirm_ticket_flow import ConfirmTicketFlow
-from thsr_ticket.controller.first_page_flow import FirstPageFlow
-from thsr_ticket.view_model.error_feedback import ErrorFeedback
-from thsr_ticket.view_model.booking_result import BookingResult
-from thsr_ticket.view.web.show_error_msg import ShowErrorMsg
-from thsr_ticket.view.web.show_booking_result import ShowBookingResult
-from thsr_ticket.view.common import history_info
-from thsr_ticket.model.db import ParamDB, Record
-from thsr_ticket.remote.http_request import HTTPRequest
+from controller.confirm_train_flow import ConfirmTrainFlow
+from controller.confirm_ticket_flow import ConfirmTicketFlow
+from controller.first_page_flow import FirstPageFlow
+from view_model.error_feedback import ErrorFeedback
+from view_model.booking_result import BookingResult
+from view.web.show_error_msg import ShowErrorMsg
+from view.web.show_booking_result import ShowBookingResult
+from remote.http_request import HTTPRequest
 
 
 class BookingFlow:
-    def __init__(self) -> None:
+    def __init__(self, user_profile: dict) -> None:
         self.client = HTTPRequest()
-        self.db = ParamDB()
-        self.record = Record()
-        self.data_dict = {}
+        self.user_profile = user_profile
         self.error_feedback = ErrorFeedback()
         self.show_error_msg = ShowErrorMsg()
 
-    def run(self) -> Tuple[Optional[Response], bool]:
-        while True:
-            try:
-                # First page. Booking options
-                first_page_flow = FirstPageFlow(client=self.client, record=self.record, data_dict=self.data_dict)
-                book_resp, _ = first_page_flow.run()
-                if self.show_error(book_resp.content):
-                    return book_resp, True
+    def run(self) -> Tuple[Response, bool]:
+        try:
+            book_resp = self.handle_first_page()
+            train_resp = self.handle_train_confirmation(book_resp)
+            ticket_resp = self.handle_ticket_confirmation(train_resp)
+            self.display_booking_result(ticket_resp)
+            return ticket_resp, False
+        except Exception as e:
+            print(f"Error occurred: {e}")
+            return None, True
 
-                # Second page. Train confirmation
-                confirm_train_flow = ConfirmTrainFlow(self.client, book_resp, data_dict=self.data_dict)
-                train_resp, _ = confirm_train_flow.run()
-                if self.show_error(train_resp.content):
-                    return train_resp, True
+    def handle_first_page(self) -> Response:
+        book_resp, _ = FirstPageFlow(
+            client=self.client, data_dict=self.user_profile
+        ).run()
+        if self.show_error(book_resp.content):
+            raise Exception("Error during first page handling.")
+        return book_resp
 
-                # Final page. Ticket confirmation
-                confirm_ticket_flow = ConfirmTicketFlow(self.client, train_resp, data_dict=self.data_dict)
-                ticket_resp, _ = confirm_ticket_flow.run()
-                if self.show_error(ticket_resp.content):
-                    return ticket_resp, True
+    def handle_train_confirmation(self, book_resp: Response) -> Response:
+        train_resp, _ = ConfirmTrainFlow(
+            self.client, book_resp, self.user_profile
+        ).run()
+        if self.show_error(train_resp.content):
+            raise Exception("Error during train confirmation.")
+        return train_resp
 
-                # Result page.
-                result_model = BookingResult().parse(ticket_resp.content)
-                book = ShowBookingResult()
-                book.show(result_model)
-                print("\nPlease use the official channels provided to complete the subsequent payment and ticket retrieval!")
-                # self.db.save(book_model, ticket_model)
-                return ticket_resp, False
+    def handle_ticket_confirmation(self, train_resp: Response) -> Response:
+        ticket_resp, _ = ConfirmTicketFlow(
+            self.client, train_resp, self.user_profile
+        ).run()
+        if self.show_error(ticket_resp.content):
+            raise Exception("Error during ticket confirmation.")
+        return ticket_resp
 
-            except Exception as e:
-                print(f"An exception occurred during the booking process: {e}")
-                return None, True
-
-    def show_history(self) -> None:
-        hist = self.db.get_history()
-        if not hist:
-            return
-        h_idx = history_info(hist)
-        if h_idx is not None:
-            self.record = hist[h_idx]
+    def display_booking_result(self, ticket_resp: Response) -> None:
+        result_model = BookingResult().parse(ticket_resp.content)
+        book = ShowBookingResult()
+        book.show(result_model)
+        print(
+            "\nPlease use the official channels to complete payment and ticket collection!"
+        )
 
     def show_error(self, html: bytes) -> bool:
         errors = self.error_feedback.parse(html)
         if len(errors) == 0:
             return False
-
         self.show_error_msg.show(errors)
         return True

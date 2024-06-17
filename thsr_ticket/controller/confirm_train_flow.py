@@ -1,13 +1,13 @@
 import json
 from datetime import datetime, timedelta
 from typing import List, Tuple
-
 from requests.models import Response
 
-from thsr_ticket.remote.http_request import HTTPRequest
-from thsr_ticket.view_model.avail_trains import AvailTrains
-from thsr_ticket.configs.web.param_schema import Train, ConfirmTrainModel
-from thsr_ticket.configs.common import AVAILABLE_TIME_TABLE
+from remote.http_request import HTTPRequest
+from view_model.avail_trains import AvailTrains
+from configs.web.param_schema import ConfirmTrainModel, Train
+from configs.common import AVAILABLE_TIME_TABLE
+
 
 class ConfirmTrainFlow:
     def __init__(self, client: HTTPRequest, book_resp: Response, data_dict: dict):
@@ -18,14 +18,14 @@ class ConfirmTrainFlow:
     def run(self) -> Tuple[Response, ConfirmTrainModel]:
         trains = AvailTrains().parse(self.book_resp.content)
         if not trains:
-            raise ValueError('No available trains!')
+            raise ValueError("No available trains!")
 
         selected_train = self.select_available_trains(trains)
 
         confirm_model = ConfirmTrainModel(
             selected_train=selected_train,
         )
-        json_params = confirm_model.json(by_alias=True)
+        json_params = confirm_model.model_dump_json(by_alias=True)
         dict_params = json.loads(json_params)
         resp = self.client.submit_train(dict_params)
         return resp, confirm_model
@@ -35,14 +35,40 @@ class ConfirmTrainFlow:
         return self.find_shortest_train(filtered_trains)
 
     def filter_trains_by_time(self, trains: List[Train]) -> List[Train]:
-        time_index = int(self.data_dict["time"]) - 1
-        selected_time = AVAILABLE_TIME_TABLE[time_index]
+        input_time = self.data_dict["time"]
+        time_obj = datetime.strptime(input_time, "%H:%M")
+        desired_time = time_obj.strftime("%I:%M %p").upper()
 
-        time_24hr = selected_time.replace('N', ' PM').replace('A', ' AM').replace('P', ' PM')
-        desired_time = datetime.strptime(time_24hr, '%I%M %p').time()
-        end_time = (datetime.combine(datetime.today(), desired_time) + timedelta(hours=0, minutes=30)).time()
+        desired_time_24hr = None
+        for slot_time in AVAILABLE_TIME_TABLE:
+            slot_time_24hr = (
+                datetime.strptime(
+                    slot_time.replace("N", " PM")
+                    .replace("A", " AM")
+                    .replace("P", " PM"),
+                    "%I%M %p",
+                )
+                .strftime("%I:%M %p")
+                .upper()
+            )
+            if slot_time_24hr == desired_time:
+                desired_time_24hr = datetime.strptime(slot_time_24hr, "%I:%M %p").time()
+                break
 
-        return [train for train in trains if desired_time <= datetime.strptime(train.depart, "%H:%M").time() <= end_time]
+        if not desired_time_24hr:
+            raise ValueError("Invalid time slot")
+
+        end_time = (
+            datetime.combine(datetime.today(), desired_time_24hr) + timedelta(hours=1)
+        ).time()
+
+        return [
+            train
+            for train in trains
+            if desired_time_24hr
+            <= datetime.strptime(train.depart, "%H:%M").time()
+            <= end_time
+        ]
 
     def find_shortest_train(self, trains: List[Train]) -> str:
         min_duration = timedelta.max
@@ -58,7 +84,7 @@ class ConfirmTrainFlow:
                 selected_train = train
 
         if selected_train:
-            print(f'Selected train: {selected_train.depart}~{selected_train.arrive}')
+            print(f"Selected train: {selected_train.depart}~{selected_train.arrive}")
             return selected_train.form_value
         else:
-            raise ValueError('No suitable trains found in the desired time range.')
+            raise ValueError("No suitable trains found in the desired time range.")

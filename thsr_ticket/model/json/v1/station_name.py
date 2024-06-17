@@ -1,4 +1,4 @@
-from thsr_ticket.model.json.base_response import BaseResponse
+from model.json.base_response import BaseResponse
 
 
 class StationName(BaseResponse):

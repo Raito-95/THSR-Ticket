@@ -1,5 +1,3 @@
-
-
 class StationID:
     def __init__(self) -> None:
         self.NANAGANG: str = "0990"

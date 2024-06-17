@@ -1,8 +1,8 @@
 from typing import List
 from collections import namedtuple
 
-from thsr_ticket.view_model.abstract_view_model import AbstractViewModel
-from thsr_ticket.configs.web.parse_html_element import ERROR_FEEDBACK
+from view_model.abstract_view_model import AbstractViewModel
+from configs.web.parse_html_element import ERROR_FEEDBACK
 
 Error = namedtuple("Error", ["msg"])
 

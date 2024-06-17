@@ -1,46 +1,19 @@
-
 class ParseAvailTrain:
-    from_html = {
-        "attrs": {
-            "class": "result-item"
-        }
-    }
+    from_html = {"attrs": {"class": "result-item"}}
 
-    train_id = {
-        "id": "QueryCode"
-    }
+    train_id = {"id": "QueryCode"}
 
-    depart = {
-        "id": "QueryDeparture"
-    }
+    depart = {"id": "QueryDeparture"}
 
-    arrival = {
-        "id": "QueryArrival"
-    }
+    arrival = {"id": "QueryArrival"}
 
-    duration = {
-        "attrs": {
-            "class": "duration"
-        }
-    }
+    duration = {"attrs": {"class": "duration"}}
 
-    early_bird_discount = {
-        'name': 'p',
-        'attrs': {
-            'class': 'early-bird'
-        }
-    }
+    early_bird_discount = {"name": "p", "attrs": {"class": "early-bird"}}
 
-    college_student_discount = {
-        'name': 'p',
-        'attrs': {
-            'class': 'student'
-        }
-    }
+    college_student_discount = {"name": "p", "attrs": {"class": "student"}}
 
     form_value = {
         "name": "input",
-        "attrs": {
-            "name": "TrainQueryDataViewPanel:TrainGroup"
-        }
+        "attrs": {"name": "TrainQueryDataViewPanel:TrainGroup"},
     }
