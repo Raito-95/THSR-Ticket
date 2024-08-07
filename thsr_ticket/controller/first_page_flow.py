@@ -34,29 +34,29 @@ class FirstPageFlow:
         outbound_date = self.select_date("date")
         outbound_time = self.select_time("time")
         security_code = self.input_security_code(captcha_img_resp)
-        seat_prefer = self.parse_seat_prefer_value(page)
 
-        book_model = BookingModel(
-            start_station=start_station,
-            dest_station=dest_station,
-            search_by=search_by,
-            trip_con=trip_con,
-            outbound_date=outbound_date,
-            outbound_time=outbound_time,
-            security_code=security_code,
-            seat_prefer=seat_prefer,
-            form_mark="",
-            class_type=0,
-            inbound_date=None,
-            inbound_time=None,
-            to_train_id=None,
-            back_train_id=None,
-            adult_ticket_num=self.select_ticket_num(TicketType.ADULT),
-            child_ticket_num="0H",
-            disabled_ticket_num="0W",
-            elder_ticket_num="0E",
-            college_ticket_num="0P",
-        )
+        data = {
+            "selectStartStation": start_station,
+            "selectDestinationStation": dest_station,
+            "bookingMethod": search_by,
+            "tripCon:typesoftrip": trip_con,
+            "toTimeInputField": outbound_date,
+            "toTimeTable": outbound_time,
+            "homeCaptcha:securityCode": security_code,
+            "seatCon:seatRadioGroup": "1",  # "1" window, "2" aisle
+            "BookingS1Form:hf:0": "",
+            "trainCon:trainRadioGroup": 0,
+            "backTimeInputField": None,
+            "backTimeTable": None,
+            "toTrainIDInputField": None,
+            "backTrainIDInputField": None,
+            "ticketPanel:rows:0:ticketAmount": self.select_ticket_num(TicketType.ADULT),
+            "ticketPanel:rows:1:ticketAmount": "0H",
+            "ticketPanel:rows:2:ticketAmount": "0W",
+            "ticketPanel:rows:3:ticketAmount": "0E",
+            "ticketPanel:rows:4:ticketAmount": "0P",
+        }
+        book_model = BookingModel(**data)
 
         json_params = book_model.model_dump_json(by_alias=True)
         dict_params = json.loads(json_params)
@@ -81,22 +81,17 @@ class FirstPageFlow:
     def select_time(self, time_key: str) -> str:
         input_time = self.data_dict[time_key]
         time_obj = datetime.strptime(input_time, "%H:%M")
-        formatted_time = time_obj.strftime("%I:%M %p").upper()
+        formatted_time = (
+            time_obj.strftime("%I%M%p")
+            .replace("AM", "A")
+            .replace("PM", "P")
+            .lstrip("0")
+            .upper()
+        )
 
-        for slot_time in AVAILABLE_TIME_TABLE:
-            slot_time_24hr = (
-                datetime.strptime(
-                    slot_time.replace("N", " PM")
-                    .replace("A", " AM")
-                    .replace("P", " PM"),
-                    "%I%M %p",
-                )
-                .strftime("%I:%M %p")
-                .upper()
-            )
-            if slot_time_24hr == formatted_time:
-                print(f"Selected Departure Time: {formatted_time}")
-                return slot_time
+        if formatted_time in AVAILABLE_TIME_TABLE:
+            print(f"Selected Departure Time: {input_time}")
+            return formatted_time
 
         raise ValueError("Invalid time slot")
 
@@ -120,14 +115,6 @@ class FirstPageFlow:
         if tag:
             return tag.attrs["value"]
         raise ValueError("No search by value found")
-
-    def parse_seat_prefer_value(self, page: BeautifulSoup) -> str:
-        options = page.find(**BOOKING_PAGE["seat_prefer_radio"])
-        if options:
-            preferred_seat = options.find_next(selected="selected")
-            if preferred_seat:
-                return preferred_seat.attrs["value"]
-        raise ValueError("No seat preference value found")
 
     def parse_types_of_trip_value(self, page: BeautifulSoup) -> int:
         options = page.find(**BOOKING_PAGE["types_of_trip"])

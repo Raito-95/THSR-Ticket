@@ -2,7 +2,7 @@ from typing import Mapping, Any
 from jsonschema import validate
 
 from model.web.abstract_params import AbstractParams
-from configs.web.param_schema import CONFIRM_TICKET_SHEMA
+from configs.web.param_schema import CONFIRM_TICKET_SCHEMA
 
 
 class ConfirmTicket(AbstractParams):
@@ -29,7 +29,7 @@ class ConfirmTicket(AbstractParams):
         }
 
         if val:
-            validate(params, schema=CONFIRM_TICKET_SHEMA)
+            validate(params, schema=CONFIRM_TICKET_SCHEMA)
         return params
 
     @property

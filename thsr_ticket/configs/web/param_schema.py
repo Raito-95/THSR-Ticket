@@ -2,7 +2,7 @@ import re
 from datetime import date, datetime
 from typing import Mapping, Any, Optional
 
-from pydantic import BaseModel as PydanticBaseModel, Field, validator
+from pydantic import BaseModel as PydanticBaseModel, Field, field_validator
 
 from configs.common import AVAILABLE_TIME_TABLE
 
@@ -28,7 +28,7 @@ BOOKING_SCHEMA: Mapping[str, Any] = {
             "enum": [0, 1],  # single trip / round trip
         },
         "seatCon:seatRadioGroup": {
-            "type": "string",  # Seat perference (None / Window seat / Aisle seat)
+            "type": "string",  # Seat preference (None / Window seat / Aisle seat)
         },
         "bookingMethod": {
             "type": "string",
@@ -37,92 +37,13 @@ BOOKING_SCHEMA: Mapping[str, Any] = {
         "toTimeInputField": {"type": "string"},  # format: yyyy/mm/dd
         "toTimeTable": {
             "type": "string",
-            "enum": [
-                "1201A",
-                "1230A",
-                "600A",
-                "630A",
-                "700A",
-                "730A",
-                "800A",
-                "830A",
-                "900A",
-                "930A",
-                "1000A",
-                "1030A",
-                "1100A",
-                "1130A",
-                "1200N",
-                "1230P",
-                "100P",
-                "130P",
-                "200P",
-                "230P",
-                "300P",
-                "330P",
-                "400P",
-                "430P",
-                "500P",
-                "530P",
-                "600P",
-                "630P",
-                "700P",
-                "730P",
-                "800P",
-                "830P",
-                "900P",
-                "930P",
-                "1000P",
-                "1030P",
-                "1100P",
-                "1130P",
-            ],
+            "enum": AVAILABLE_TIME_TABLE,  # Use the imported AVAILABLE_TIME_TABLE
         },
         "toTrainIDInputField": {"type": "string"},
         "backTimeInputField": {"type": "string"},
         "backTimeTable": {
             "type": "string",
-            "enum": [
-                "1201A",
-                "1230A",
-                "600A",
-                "630A",
-                "700A",
-                "730A",
-                "800A",
-                "830A",
-                "900A",
-                "930A",
-                "1000A",
-                "1030A",
-                "1100A",
-                "1130A",
-                "1200N",
-                "1230P",
-                "100P",
-                "130P",
-                "200P",
-                "230P",
-                "300P",
-                "330P",
-                "400P",
-                "430P",
-                "500P",
-                "530P",
-                "600P",
-                "630P",
-                "700P",
-                "730P",
-                "800P",
-                "830P",
-                "900P",
-                "930P",
-                "1000P",
-                "1030P",
-                "1100P",
-                "1130P",
-                "",
-            ],
+            "enum": AVAILABLE_TIME_TABLE,  # Use the imported AVAILABLE_TIME_TABLE
         },
         "backTrainIDInputField": {"type": "string"},
         "ticketPanel:rows:0:ticketAmount": {
@@ -166,7 +87,7 @@ CONFIRM_TRAIN_SCHEMA: Mapping[str, Any] = {
     "additionalProperties": False,
 }
 
-CONFIRM_TICKET_SHEMA: Mapping[str, Any] = {
+CONFIRM_TICKET_SCHEMA: Mapping[str, Any] = {
     "type": "object",
     "properties": {
         "BookingS3FormSP:hf:0": {"type": "string"},
@@ -207,33 +128,33 @@ class BookingModel(BaseModel):
     class_type: int = Field(0, alias="trainCon:trainRadioGroup")
     inbound_date: Optional[str] = Field(None, alias="backTimeInputField")
     inbound_time: Optional[str] = Field(None, alias="backTimeTable")
-    to_train_id: Optional[int] = Field(None, alias="toTrainIDInputField")
-    back_train_id: Optional[int] = Field(None, alias="backTrainIDInputField")
+    to_train_id: Optional[str] = Field(None, alias="toTrainIDInputField")
+    back_train_id: Optional[str] = Field(None, alias="backTrainIDInputField")
     adult_ticket_num: str = Field("1F", alias="ticketPanel:rows:0:ticketAmount")
     child_ticket_num: str = Field("0H", alias="ticketPanel:rows:1:ticketAmount")
     disabled_ticket_num: str = Field("0W", alias="ticketPanel:rows:2:ticketAmount")
     elder_ticket_num: str = Field("0E", alias="ticketPanel:rows:3:ticketAmount")
     college_ticket_num: str = Field("0P", alias="ticketPanel:rows:4:ticketAmount")
 
-    @validator("start_station", "dest_station")
-    def check_station(cls, station):
-        if station not in range(1, 13):
-            raise ValueError(f"Unknown station number: {station}")
-        return station
+    @field_validator("start_station", "dest_station")
+    def check_station(cls, value):
+        if value not in range(1, 13):
+            raise ValueError(f"Unknown station number: {value}")
+        return value
 
-    @validator("search_by")
+    @field_validator("search_by")
     def check_search_by(cls, value):
         if not re.match(r"radio\d+", value):
             raise ValueError(f"Invalid search_by format: {value}")
         return value
 
-    @validator("trip_con")
+    @field_validator("trip_con")
     def check_types_of_trip(cls, value):
         if value not in [0, 1]:
             raise ValueError(f"Invalid type of trip: {value}")
         return value
 
-    @validator("outbound_date", "inbound_date", pre=True, always=True)
+    @field_validator("outbound_date", "inbound_date", mode="before")
     def check_date(cls, value):
         if value is None:
             return date.today().strftime("%Y/%m/%d")
@@ -255,7 +176,7 @@ class BookingModel(BaseModel):
             )
         return target_date.strftime("%Y/%m/%d")
 
-    @validator("outbound_time", "inbound_time", pre=True, always=True)
+    @field_validator("outbound_time", "inbound_time", mode="before")
     def check_time(cls, value):
         if value is None:
             return value
@@ -263,31 +184,31 @@ class BookingModel(BaseModel):
             raise ValueError(f"Unknown time string: {value}")
         return value
 
-    @validator("adult_ticket_num")
+    @field_validator("adult_ticket_num")
     def check_adult_ticket_num(cls, value):
         if not re.match(r"\d+F", value):
             raise ValueError(f"Invalid adult ticket num format: {value}")
         return value
 
-    @validator("child_ticket_num")
+    @field_validator("child_ticket_num")
     def check_child_ticket_num(cls, value):
         if not re.match(r"\d+H", value):
             raise ValueError(f"Invalid child ticket num format: {value}")
         return value
 
-    @validator("disabled_ticket_num")
+    @field_validator("disabled_ticket_num")
     def check_disabled_ticket_num(cls, value):
         if not re.match(r"\d+W", value):
             raise ValueError(f"Invalid disabled ticket num format: {value}")
         return value
 
-    @validator("elder_ticket_num")
+    @field_validator("elder_ticket_num")
     def check_elder_ticket_num(cls, value):
         if not re.match(r"\d+E", value):
             raise ValueError(f"Invalid elder ticket num format: {value}")
         return value
 
-    @validator("college_ticket_num")
+    @field_validator("college_ticket_num")
     def check_college_ticket_num(cls, value):
         if not re.match(r"\d+P", value):
             raise ValueError(f"Invalid college ticket num format: {value}")

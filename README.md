@@ -1,13 +1,13 @@
 # THSR Ticket Booking System
 
-This script automates the booking process for Taiwan High-Speed Rail (THSR) tickets. It simplifies the task of booking train tickets by providing a user-friendly command-line interface.
+This script automates the booking process for Taiwan High-Speed Rail (THSR) tickets. It simplifies the task of booking train tickets by providing a user-friendly command-line interface. Note that this script does not support promotional or early bird tickets.
 
 ## Features
 
 - Automates ticket booking for THSR.
 - Validates user input for dates, times, and station numbers.
 - Selects the train with the shortest travel time within an hour of the provided time slot.
-- Supports booking tickets for all THSR stations.
+- Supports booking tickets for travel between all THSR stations.
 
 ## System Requirements
 
@@ -47,7 +47,7 @@ Follow the script prompts to enter:
 
 * Start Station (1-12)
 * Destination Station (1-12)
-* Date (YYYY-MM-DD)
+* Date (YYYY/MM/DD)
 * Time (HH:MM)
 * ID Number
 * Phone Number
@@ -59,6 +59,18 @@ To run the script in test mode using a JSON file for input:
 
 ```shell
 python ./thsr_ticket/main.py -t profile.json
+```
+
+```json
+{
+    "start_station": "1",
+    "dest_station": "2",
+    "date": "YYYY/MM/DD",
+    "time": "HH:MM",
+    "ID_number": "",
+    "phone_number": "",
+    "email_address": ""
+}
 ```
 
 ## Stations Reference

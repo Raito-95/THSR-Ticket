@@ -14,12 +14,24 @@ class ConfirmTicketFlow:
 
     def run(self) -> Tuple[Response, ConfirmTicketModel]:
         page = BeautifulSoup(self.train_resp.content, features="html.parser")
-        ticket_model = ConfirmTicketModel(
-            personal_id=self.user_profile["ID_number"],
-            phone_num=self.user_profile["phone_number"],
-            email=self.user_profile["email_address"],
-            member_radio=self.parse_member_radio(page),
-        )
+
+        data = {
+            "dummyId": self.user_profile["ID_number"],
+            "dummyPhone": self.user_profile["phone_number"],
+            "email": self.user_profile["email_address"],
+            "TicketMemberSystemInputPanel:TakerMemberSystemDataView:memberSystemRadioGroup": self.parse_member_radio(
+                page
+            ),
+            "BookingS3FormSP:hf:0": "",
+            "idInputRadio": 0,
+            "diffOver": 1,
+            "agree": "on",
+            "isGoBackM": "",
+            "backHome": "",
+            "TgoError": 1,
+        }
+
+        ticket_model = ConfirmTicketModel(**data)
 
         json_params = ticket_model.model_dump_json(by_alias=True)
         dict_params = json.loads(json_params)

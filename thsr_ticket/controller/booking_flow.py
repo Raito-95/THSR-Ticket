@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Optional
 from requests.models import Response
 
 from controller.confirm_train_flow import ConfirmTrainFlow
@@ -18,7 +18,7 @@ class BookingFlow:
         self.error_feedback = ErrorFeedback()
         self.show_error_msg = ShowErrorMsg()
 
-    def run(self) -> Tuple[Response, bool]:
+    def run(self) -> Tuple[Optional[Response], bool]:
         try:
             book_resp = self.handle_first_page()
             train_resp = self.handle_train_confirmation(book_resp)
