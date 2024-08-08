@@ -43,7 +43,7 @@ class FirstPageFlow:
             "toTimeInputField": outbound_date,
             "toTimeTable": outbound_time,
             "homeCaptcha:securityCode": security_code,
-            "seatCon:seatRadioGroup": "1",  # "1" window, "2" aisle
+            "seatCon:seatRadioGroup": 1,  # Default to window seat preference
             "BookingS1Form:hf:0": "",
             "trainCon:trainRadioGroup": 0,
             "backTimeInputField": None,
@@ -51,11 +51,17 @@ class FirstPageFlow:
             "toTrainIDInputField": None,
             "backTrainIDInputField": None,
             "ticketPanel:rows:0:ticketAmount": self.select_ticket_num(TicketType.ADULT),
-            "ticketPanel:rows:1:ticketAmount": "0H",
-            "ticketPanel:rows:2:ticketAmount": "0W",
-            "ticketPanel:rows:3:ticketAmount": "0E",
-            "ticketPanel:rows:4:ticketAmount": "0P",
+            "ticketPanel:rows:1:ticketAmount": self.select_ticket_num(TicketType.CHILD),
+            "ticketPanel:rows:2:ticketAmount": self.select_ticket_num(
+                TicketType.DISABLED
+            ),
+            "ticketPanel:rows:3:ticketAmount": self.select_ticket_num(TicketType.ELDER),
+            "ticketPanel:rows:4:ticketAmount": self.select_ticket_num(
+                TicketType.COLLEGE
+            ),
+            "trainTypeContainer:typesoftrain": 0,  # Default to all trains
         }
+
         book_model = BookingModel(**data)
 
         json_params = book_model.model_dump_json(by_alias=True)
@@ -96,7 +102,7 @@ class FirstPageFlow:
         raise ValueError("Invalid time slot")
 
     def select_ticket_num(
-        self, ticket_type: TicketType, default_ticket_num: int = 1
+        self, ticket_type: TicketType, default_ticket_num: int = 0
     ) -> str:
         ticket_type_name = {
             TicketType.ADULT: "Adult",
@@ -105,6 +111,9 @@ class FirstPageFlow:
             TicketType.ELDER: "Elder",
             TicketType.COLLEGE: "College",
         }.get(ticket_type)
+
+        if ticket_type == TicketType.ADULT:
+            default_ticket_num = 1
 
         print(f"Selected {default_ticket_num} {ticket_type_name} Ticket(s)")
         return f"{default_ticket_num}{ticket_type.value}"
@@ -127,5 +136,5 @@ class FirstPageFlow:
     def input_security_code(self, img_resp: bytes) -> str:
         image = Image.open(io.BytesIO(img_resp))
         result = image_process.verify_code(image)
-        print(f"Verification Code: {result}")
+        # print(f"Verification Code: {result}")
         return result

@@ -25,16 +25,17 @@ BOOKING_SCHEMA: Mapping[str, Any] = {
         },
         "tripCon:typesoftrip": {
             "type": "integer",
-            "enum": [0, 1],  # single trip / round trip
+            "enum": [0, 1],  # Single trip / Round trip
         },
         "seatCon:seatRadioGroup": {
-            "type": "string",  # Seat preference (None / Window seat / Aisle seat)
+            "type": "integer",
+            "enum": [0, 1, 2],  # No preference / Window seat / Aisle seat
         },
         "bookingMethod": {
             "type": "string",
             "pattern": "radio[0-9]+",
         },
-        "toTimeInputField": {"type": "string"},  # format: yyyy/mm/dd
+        "toTimeInputField": {"type": "string"},  # Format: yyyy/mm/dd
         "toTimeTable": {
             "type": "string",
             "enum": AVAILABLE_TIME_TABLE,  # Use the imported AVAILABLE_TIME_TABLE
@@ -66,6 +67,10 @@ BOOKING_SCHEMA: Mapping[str, Any] = {
             "type": "string",  # College student ticket (Taiwan only)
             "enum": ["0P", "1P", "2P", "3P", "4P", "5P", "6P", "7P", "8P", "9P", "10P"],
         },
+        "trainTypeContainer:typesoftrain": {
+            "type": "integer",
+            "enum": [0, 1, 2],  # All trains / Early bird / No early bird
+        },
         "homeCaptcha:securityCode": {"type": "string"},
     },
     "required": [
@@ -77,6 +82,7 @@ BOOKING_SCHEMA: Mapping[str, Any] = {
     "additionalProperties": False,
 }
 
+
 CONFIRM_TRAIN_SCHEMA: Mapping[str, Any] = {
     "type": "object",
     "properties": {
@@ -87,24 +93,43 @@ CONFIRM_TRAIN_SCHEMA: Mapping[str, Any] = {
     "additionalProperties": False,
 }
 
+
 CONFIRM_TICKET_SCHEMA: Mapping[str, Any] = {
     "type": "object",
     "properties": {
         "BookingS3FormSP:hf:0": {"type": "string"},
         "diffOver": {"type": "integer"},
-        "idInputRadio": {"type": "integer"},
+        "idInputRadio": {"type": "integer", "enum": [0, 1]},  # 身份證字號 / 護照號碼
         "dummyId": {"type": "string"},
         "dummyPhone": {"type": "string"},
         "email": {"type": "string"},
         "agree": {"type": "string", "enum": ["on", ""]},
         "isGoBackM": {"type": "string"},
         "backHome": {"type": "string"},
-        "TgoError": {"type": "string"},
+        "TgoError": {"type": "integer"},
+        "passengerCount": {"type": "integer"},
+        "isEarlyBirdRegister": {"type": "integer", "enum": [0, 1]},  # 是 / 否
+        "isSPromotion": {"type": "integer", "enum": [0, 1]},  # 是 / 否
+        "isMustBeCard": {"type": "integer", "enum": [0, 1]},  # 是 / 否
         "TicketMemberSystemInputPanel:TakerMemberSystemDataView:memberSystemRadioGroup": {
             "type": "string"
         },
+        "TicketPassengerInfoInputPanel:passengerDataView:0:passengerDataView2:passengerDataInputChoice": {
+            "type": "integer",
+            "enum": [0, 1],  # 身份證字號 / 護照號碼
+        },
+        "TicketPassengerInfoInputPanel:passengerDataView:0:passengerDataView2:passengerDataIdNumber": {
+            "type": "string"
+        },
+        "idNumber": {"type": "string"},
     },
-    "required": ["agree", "dummyId"],
+    "required": [
+        "agree",
+        "dummyId",
+        "dummyPhone",
+        "TicketMemberSystemInputPanel:TakerMemberSystemDataView:memberSystemRadioGroup",
+        "TicketPassengerInfoInputPanel:passengerDataView:0:passengerDataView2:passengerDataIdNumber",
+    ],
     "additionalProperties": False,
 }
 
@@ -123,7 +148,11 @@ class BookingModel(BaseModel):
     outbound_date: str = Field(..., alias="toTimeInputField")
     outbound_time: str = Field(..., alias="toTimeTable")
     security_code: str = Field(..., alias="homeCaptcha:securityCode")
-    seat_prefer: str = Field(..., alias="seatCon:seatRadioGroup")
+    seat_prefer: int = Field(
+        0,
+        alias="seatCon:seatRadioGroup",
+        description="0: No preference, 1: Window, 2: Aisle",
+    )
     form_mark: str = Field("", alias="BookingS1Form:hf:0")
     class_type: int = Field(0, alias="trainCon:trainRadioGroup")
     inbound_date: Optional[str] = Field(None, alias="backTimeInputField")
@@ -135,6 +164,11 @@ class BookingModel(BaseModel):
     disabled_ticket_num: str = Field("0W", alias="ticketPanel:rows:2:ticketAmount")
     elder_ticket_num: str = Field("0E", alias="ticketPanel:rows:3:ticketAmount")
     college_ticket_num: str = Field("0P", alias="ticketPanel:rows:4:ticketAmount")
+    train_type: Optional[int] = Field(
+        None,
+        alias="trainTypeContainer:typesoftrain",
+        description="0: All trains, 1: Early bird, 2: No early bird",
+    )
 
     @field_validator("start_station", "dest_station")
     def check_station(cls, value):

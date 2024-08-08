@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 import re
+from configs.web.enums import StationMapping
 
 
 class TicketBookingValidator:
@@ -21,49 +22,70 @@ class TicketBookingValidator:
             print(error_message)
 
     def input_profile(self):
-        self.profile = {
-            "start_station": self.get_valid_input(
-                "Please enter the start station number (1-12): ",
-                self.is_valid_station,
-                "Invalid station number, please try again.",
-            ),
-            "dest_station": self.get_valid_input(
-                "Please enter the destination station number (1-12): ",
-                self.is_valid_station,
-                "Invalid station number, please try again.",
-            ),
-            "date": self.get_valid_input(
-                "Please enter the date (YYYY/MM/DD): ",
-                self.is_valid_date,
-                "Invalid date format or past date, please try again.",
-            ),
-        }
+        while True:
+            self.profile = {
+                "start_station": self.get_valid_input(
+                    "Please enter the start station number (1-12): ",
+                    self.is_valid_station,
+                    "Invalid station number, please try again.",
+                    int,
+                ),
+                "dest_station": self.get_valid_input(
+                    "Please enter the destination station number (1-12): ",
+                    self.is_valid_station,
+                    "Invalid station number, please try again.",
+                    int,
+                ),
+                "date": self.get_valid_input(
+                    "Please enter the date (YYYY/MM/DD): ",
+                    self.is_valid_date,
+                    "Invalid date format or past date, please try again.",
+                ),
+            }
 
-        time, next_day_required = self.convert_to_timeslot(
-            self.get_valid_input(
-                "Please enter the time (HH:MM): ",
-                self.is_valid_24hr_time,
-                "Invalid time format, please try again.",
-            ),
-            self.profile["date"],
-        )
-        self.profile["time"] = time
-
-        if next_day_required:
-            new_date = datetime.strptime(self.profile["date"], "%Y/%m/%d") + timedelta(
-                days=1
+            time, next_day_required = self.convert_to_timeslot(
+                self.get_valid_input(
+                    "Please enter the time (HH:MM): ",
+                    self.is_valid_24hr_time,
+                    "Invalid time format, please try again.",
+                ),
+                self.profile["date"],
             )
-            self.profile["date"] = new_date.strftime("%Y/%m/%d")
+            self.profile["time"] = time
 
-        self.profile["ID_number"] = input("Please enter your ID number: ")
-        self.profile["phone_number"] = input("Please enter your phone number: ")
-        self.profile["email_address"] = self.get_valid_input(
-            "Please enter your email address: ",
-            self.is_valid_email,
-            "Invalid email address format, please try again.",
-        )
+            if next_day_required:
+                new_date = datetime.strptime(
+                    self.profile["date"], "%Y/%m/%d"
+                ) + timedelta(days=1)
+                self.profile["date"] = new_date.strftime("%Y/%m/%d")
+
+            self.profile["ID_number"] = input("Please enter your ID number: ")
+            self.profile["phone_number"] = input("Please enter your phone number: ")
+            self.profile["email_address"] = self.get_valid_input(
+                "Please enter your email address: ",
+                self.is_valid_email,
+                "Invalid email address format, please try again.",
+            )
+
+            self.display_profile()
+
+            if self.confirm_profile():
+                break
 
         return self.profile
+
+    def display_profile(self):
+        print("\nPlease confirm your profile:")
+        for key, value in self.profile.items():
+            if key in ["start_station", "dest_station"]:
+                value = StationMapping(value).name
+            print(f"{key.replace('_', ' ').title()}: {value}")
+
+    def confirm_profile(self):
+        confirmation = (
+            input("Is the above information correct? (y/n): ").strip().lower()
+        )
+        return confirmation == "y"
 
     @staticmethod
     def is_valid_date(date_str):
@@ -117,4 +139,4 @@ class TicketBookingValidator:
 if __name__ == "__main__":
     validator = TicketBookingValidator()
     user_profile = validator.input_profile()
-    print("User Profile:", user_profile)
+    print("Final User Profile:", user_profile)
