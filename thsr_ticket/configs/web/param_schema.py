@@ -230,20 +230,38 @@ class ConfirmTrainModel(BaseModel):
 
 
 class ConfirmTicketModel(BaseModel):
+    form_mark: str = Field("", alias="BookingS3FormSP:hf:0")
+    diff_over: int = Field(1, alias="diffOver")
+    go_back_m: str = Field("", alias="isGoBackM")
+    back_home: str = Field("", alias="backHome")
+    tgo_error: int = Field(1, alias="TgoError")
+    passenger_count: int = Field(1, alias="passengerCount")
+    is_early_bird_register: int = Field(1, alias="isEarlyBirdRegister")  # 0: 是, 1: 否
+    is_promotion: int = Field(1, alias="isSPromotion")  # 0: 是, 1: 否
+    is_must_be_card: int = Field(1, alias="isMustBeCard")  # 0: 是, 1: 否
+
+    id_input_radio: int = Field(
+        0, alias="idInputRadio", description="0: 身份證字號 / 1: 護照號碼"
+    )
     personal_id: str = Field(..., alias="dummyId")
     phone_num: str = Field(..., alias="dummyPhone")
+    email: str = Field("", alias="email")
+    id_number: str = Field(..., alias="idNumber")
+
     member_radio: str = Field(
         ...,
         alias="TicketMemberSystemInputPanel:TakerMemberSystemDataView:memberSystemRadioGroup",
         description="非高鐵會員, 企業會員 / 高鐵會員 / 企業會員統編",
     )
-    form_mark: str = Field("", alias="BookingS3FormSP:hf:0")
-    id_input_radio: int = Field(
-        0, alias="idInputRadio", description="0: 身份證字號 / 1: 護照號碼"
-    )
-    diff_over: int = Field(1, alias="diffOver")
-    email: str = Field("", alias="email")
+
     agree: str = Field("on", alias="agree")
-    go_back_m: str = Field("", alias="isGoBackM")
-    back_home: str = Field("", alias="backHome")
-    tgo_error: int = Field(1, alias="TgoError")
+
+    passenger_data_choice: Optional[int] = Field(
+        None,
+        alias="TicketPassengerInfoInputPanel:passengerDataView:0:passengerDataView2:passengerDataInputChoice",
+        description="0: 身份證字號 / 1: 護照號碼",
+    )
+    passenger_data_id_number: Optional[str] = Field(
+        None,
+        alias="TicketPassengerInfoInputPanel:passengerDataView:0:passengerDataView2:passengerDataIdNumber",
+    )

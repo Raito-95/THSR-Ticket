@@ -15,13 +15,13 @@ class ConfirmTicketFlow:
     def run(self) -> Tuple[Response, ConfirmTicketModel]:
         page = BeautifulSoup(self.train_resp.content, features="html.parser")
 
+        is_early_bird = self.check_if_early_bird(page)
+
         data = {
             "dummyId": self.user_profile["ID_number"],
             "dummyPhone": self.user_profile["phone_number"],
             "email": self.user_profile["email_address"],
-            "TicketMemberSystemInputPanel:TakerMemberSystemDataView:memberSystemRadioGroup": self.parse_member_radio(
-                page
-            ),
+            "TicketMemberSystemInputPanel:TakerMemberSystemDataView:memberSystemRadioGroup": self.parse_member_radio(page),
             "BookingS3FormSP:hf:0": "",
             "idInputRadio": 0,
             "diffOver": 1,
@@ -29,7 +29,22 @@ class ConfirmTicketFlow:
             "isGoBackM": "",
             "backHome": "",
             "TgoError": 1,
+            "passengerCount": 1,
+            "isEarlyBirdRegister": 0 if is_early_bird else 1,
+            "isSPromotion": 1,
+            "isMustBeCard": 1,
+            "idNumber": self.user_profile["ID_number"]
         }
+
+        if is_early_bird:
+            print("This is an early bird ticket, please provide the necessary information.")
+            passenger_id_choice = int(input("Please select ID type (0: ID Number, 1: Passport Number): "))
+            passenger_id_number = input("Please enter the ID number: ")
+            
+            data.update({
+                "TicketPassengerInfoInputPanel:passengerDataView:0:passengerDataView2:passengerDataInputChoice": passenger_id_choice,
+                "TicketPassengerInfoInputPanel:passengerDataView:0:passengerDataView2:passengerDataIdNumber": passenger_id_number
+            })
 
         ticket_model = ConfirmTicketModel(**data)
 
@@ -47,3 +62,7 @@ class ConfirmTicketFlow:
         )
         tag = next((cand for cand in candidates if "checked" in cand.attrs))
         return tag.attrs["value"]
+
+    def check_if_early_bird(self, page: BeautifulSoup) -> bool:
+        early_bird_keywords = ["早鳥"]
+        return any(keyword in page.text for keyword in early_bird_keywords)
