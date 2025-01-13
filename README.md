@@ -1,6 +1,6 @@
 # THSR Ticket Booking System
 
-This script automates the booking process for Taiwan High-Speed Rail (THSR) tickets. It simplifies the task of booking train tickets by providing a user-friendly command-line interface. Note that this script does not support promotional or early bird tickets.
+This script automates the booking process for Taiwan High-Speed Rail (THSR) tickets. It simplifies the task of booking train tickets by providing a user-friendly command-line interface. **This script now supports early bird tickets when available, but does not allow users to explicitly select early bird tickets. Additionally, if an early bird ticket is selected during the booking process, the script will prompt the user to manually enter their ID number. The handling of promotional tickets has not been implemented or tested.**
 
 ## Features
 
@@ -8,6 +8,8 @@ This script automates the booking process for Taiwan High-Speed Rail (THSR) tick
 - Validates user input for dates, times, and station numbers.
 - Selects the train with the shortest travel time within an hour of the provided time slot.
 - Supports booking tickets for travel between all THSR stations.
+- **When the script selects an early bird ticket, it will prompt the user to enter their ID number.**
+- **Currently only supports one-way tickets. Round-trip ticket booking is not supported.**
 
 ## System Requirements
 
@@ -19,21 +21,21 @@ This script automates the booking process for Taiwan High-Speed Rail (THSR) tick
 
 1. **Clone the Repository**
 
-```shell
-git clone https://github.com/Raito-95/THSR-Ticket.git
-```
+   ```shell
+   git clone https://github.com/Raito-95/THSR-Ticket.git
+   ```
 
 2. **Navigate to the Directory**
 
-```shell
-cd THSR-Ticket
-```
+   ```shell
+   cd THSR-Ticket
+   ```
 
 3. **Install Required Packages**
 
-```shell
-python -m pip install -r requirements.txt
-```
+   ```shell
+   python -m pip install -r requirements.txt
+   ```
 
 ## Usage
 
@@ -45,13 +47,15 @@ python ./thsr_ticket/main.py
 
 Follow the script prompts to enter:
 
-* Start Station (1-12)
-* Destination Station (1-12)
-* Date (YYYY/MM/DD)
-* Time (HH:MM)
-* ID Number
-* Phone Number
-* Email Address
+- Start Station (1-12)
+- Destination Station (1-12)
+- Date (YYYY/MM/DD)
+- Time (HH:MM)
+- ID Number
+- Phone Number
+- Email Address
+
+**Note:** If the script selects an early bird ticket, you will be prompted to enter your ID number for verification.
 
 ### Test Mode
 
@@ -92,9 +96,9 @@ python ./thsr_ticket/main.py -t profile.json
 
 If you encounter any issues, please ensure:
 
-* Your Python version is 3.10 or higher.
-* All required packages are installed.
-* Your internet connection is stable.
+- Your Python version is 3.10 or higher.
+- All required packages are installed.
+- Your internet connection is stable.
 
 ## Disclaimer
 

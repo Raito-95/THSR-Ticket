@@ -45,21 +45,17 @@ class FirstPageFlow:
             "homeCaptcha:securityCode": security_code,
             "seatCon:seatRadioGroup": 1,  # Default to window seat preference
             "BookingS1Form:hf:0": "",
-            "trainCon:trainRadioGroup": 0,
+            "trainCon:trainRadioGroup": 0,  # Ticket type: 0 for one-way ticket, 1 for round-trip ticket
             "backTimeInputField": None,
             "backTimeTable": None,
             "toTrainIDInputField": None,
             "backTrainIDInputField": None,
             "ticketPanel:rows:0:ticketAmount": self.select_ticket_num(TicketType.ADULT),
             "ticketPanel:rows:1:ticketAmount": self.select_ticket_num(TicketType.CHILD),
-            "ticketPanel:rows:2:ticketAmount": self.select_ticket_num(
-                TicketType.DISABLED
-            ),
+            "ticketPanel:rows:2:ticketAmount": self.select_ticket_num(TicketType.DISABLED),
             "ticketPanel:rows:3:ticketAmount": self.select_ticket_num(TicketType.ELDER),
-            "ticketPanel:rows:4:ticketAmount": self.select_ticket_num(
-                TicketType.COLLEGE
-            ),
-            "trainTypeContainer:typesoftrain": 0,  # Default to all trains
+            "ticketPanel:rows:4:ticketAmount": self.select_ticket_num(TicketType.COLLEGE),
+            "trainTypeContainer:typesoftrain": 0,  # Default to include all train types (regular tickets and early bird tickets)
         }
 
         book_model = BookingModel(**data)
