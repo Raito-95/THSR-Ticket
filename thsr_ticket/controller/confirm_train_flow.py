@@ -44,7 +44,7 @@ class ConfirmTrainFlow:
 
         desired_time = datetime.strptime(formatted_time, "%I%M%p").time()
         end_time = (
-            datetime.combine(datetime.today(), desired_time) + timedelta(hours=1)
+            datetime.combine(datetime.today(), desired_time) + timedelta(hours=1, minutes=0)
         ).time()
 
         return [
