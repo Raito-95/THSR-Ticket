@@ -40,33 +40,41 @@ class ConfirmTrainFlow:
     def filter_trains_by_time(self, trains: List[Train]) -> List[Train]:
         input_time = self.data_dict["time"]
         time_obj = datetime.strptime(input_time, "%H:%M")
-        formatted_time = time_obj.strftime("%I%M%p")
+        formatted_time = time_obj.strftime("%H:%M")
 
-        desired_time = datetime.strptime(formatted_time, "%I%M%p").time()
+        desired_time = datetime.strptime(formatted_time, "%H:%M").time()
         end_time = (
             datetime.combine(datetime.today(), desired_time) + timedelta(hours=1, minutes=0)
         ).time()
 
-        return [
-            train
-            for train in trains
-            if desired_time
-            <= datetime.strptime(train.depart, "%H:%M").time()
-            <= end_time
-        ]
+        filtered_trains = []
+        for train in trains:
+            try:
+                train_depart_time = datetime.strptime(
+                    train.depart.strip().zfill(5), "%H:%M"
+                ).time()
+                if desired_time <= train_depart_time <= end_time:
+                    filtered_trains.append(train)
+            except Exception:
+                continue
+
+        return filtered_trains
 
     def find_shortest_train(self, trains: List[Train]) -> Train:
         min_duration = timedelta.max
         selected_train = None
 
         for train in trains:
-            depart_time = datetime.strptime(train.depart, "%H:%M")
-            arrive_time = datetime.strptime(train.arrive, "%H:%M")
-            duration = arrive_time - depart_time
+            try:
+                depart_time = datetime.strptime(train.depart.strip(), "%H:%M")
+                arrive_time = datetime.strptime(train.arrive.strip(), "%H:%M")
+                duration = arrive_time - depart_time
 
-            if duration < min_duration:
-                min_duration = duration
-                selected_train = train
+                if duration < min_duration:
+                    min_duration = duration
+                    selected_train = train
+            except Exception:
+                continue
 
         if selected_train:
             print(f"Selected train: {selected_train.depart}~{selected_train.arrive}")

@@ -130,7 +130,10 @@ class FirstPageFlow:
         raise ValueError("No types of trip value found")
 
     def input_security_code(self, img_resp: bytes) -> str:
-        image = Image.open(io.BytesIO(img_resp))
-        result = image_process.verify_code(image)
-        # print(f"Verification Code: {result}")
-        return result
+        try:
+            image = Image.open(io.BytesIO(img_resp))
+            result = image_process.verify_code(image)
+            # print(f"Verification Code: {result}")
+            return result
+        except Exception:
+            raise ValueError("Error processing security code")

@@ -19,27 +19,37 @@ class AvailTrains(AbstractViewModel):
 
     def _parse_train(self, avail: List[Tag]) -> List[Train]:
         for item in avail:
-            train_id = int(item.find(**self.cond.train_id).text)
-            depart_time = item.find(**self.cond.depart).text
-            arrival_time = item.find(**self.cond.arrival).text
-            travel_time = (
-                item.find(**self.cond.duration)
-                .find_next("span", {"class": "material-icons"})
-                .fetchNextSiblings()[0]
-                .text
-            )
-            discount_str = self._parse_discount(item)
-            form_value = item.find(**self.cond.form_value).attrs["value"]
-            self.avail_trains.append(
-                Train(
-                    id=train_id,
-                    depart=depart_time,
-                    arrive=arrival_time,
-                    travel_time=travel_time,
-                    discount_str=discount_str,
-                    form_value=form_value,
+            train_input = item.find("input", class_="uk-radio")
+
+            if not train_input:
+                continue
+
+            try:
+                train_id = int(train_input["QueryCode"])
+                depart_time = train_input["QueryDeparture"]
+                arrival_time = train_input["QueryArrival"]
+                travel_time = train_input["QueryEstimatedTime"]
+                form_value = train_input["value"]
+
+                discount_str = self._parse_discount(item)
+
+                print(
+                    f"Train {train_id}: {depart_time} → {arrival_time} ({travel_time})"
                 )
-            )
+
+                self.avail_trains.append(
+                    Train(
+                        id=train_id,
+                        depart=depart_time,
+                        arrive=arrival_time,
+                        travel_time=travel_time,
+                        discount_str=discount_str,
+                        form_value=form_value,
+                    )
+                )
+            except Exception:
+                continue
+
         return self.avail_trains
 
     def _parse_discount(self, item: Tag) -> str:
@@ -49,6 +59,5 @@ class AvailTrains(AbstractViewModel):
         if tag := item.find(**self.cond.college_student_discount):
             discounts.append(tag.find_next().text)
         if discounts:
-            joined_str = ", ".join(discounts)
-            return f"({joined_str})"
+            return ", ".join(discounts)
         return ""
