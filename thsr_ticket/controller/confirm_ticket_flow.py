@@ -7,15 +7,24 @@ from remote.http_request import HTTPRequest
 
 
 class ConfirmTicketFlow:
-    def __init__(self, client: HTTPRequest, train_resp: Response, user_profile: dict):
+    def __init__(
+        self,
+        client: HTTPRequest,
+        train_resp: Response,
+        user_profile: dict,
+        verbose: bool = False,
+    ):
         self.client = client
         self.train_resp = train_resp
         self.user_profile = user_profile
+        self.verbose = verbose
 
     def run(self) -> Tuple[Response, ConfirmTicketModel]:
         page = BeautifulSoup(self.train_resp.content, features="html.parser")
-
         is_early_bird = self.check_if_early_bird(page)
+
+        if self.verbose:
+            print(f"I: Early bird ticket detected: {is_early_bird}")
 
         data = {
             "dummyId": self.user_profile["ID_number"],
@@ -33,21 +42,20 @@ class ConfirmTicketFlow:
             "isEarlyBirdRegister": 0 if is_early_bird else 1,
             "isSPromotion": 1,
             "isMustBeCard": 1,
-            "idNumber": self.user_profile["ID_number"]
+            "idNumber": self.user_profile["ID_number"],
         }
 
         if is_early_bird:
-            print("This is an early bird ticket, please provide the necessary information.")
-            passenger_id_choice = int(input("Please select ID type (0: ID Number, 1: Passport Number): "))
-            passenger_id_number = input("Please enter the ID number: ")
-            
-            data.update({
-                "TicketPassengerInfoInputPanel:passengerDataView:0:passengerDataView2:passengerDataInputChoice": passenger_id_choice,
-                "TicketPassengerInfoInputPanel:passengerDataView:0:passengerDataView2:passengerDataIdNumber": passenger_id_number
-            })
+            if self.verbose:
+                print("I: Auto-filling early bird passenger ID info")
+            data.update(
+                {
+                    "TicketPassengerInfoInputPanel:passengerDataView:0:passengerDataView2:passengerDataInputChoice": 0,
+                    "TicketPassengerInfoInputPanel:passengerDataView:0:passengerDataView2:passengerDataIdNumber": self.user_profile["ID_number"],
+                }
+            )
 
         ticket_model = ConfirmTicketModel(**data)
-
         json_params = ticket_model.model_dump_json(by_alias=True)
         dict_params = json.loads(json_params)
         resp = self.client.submit_ticket(dict_params)
@@ -60,9 +68,10 @@ class ConfirmTicketFlow:
                 "name": "TicketMemberSystemInputPanel:TakerMemberSystemDataView:memberSystemRadioGroup"
             },
         )
-        tag = next((cand for cand in candidates if "checked" in cand.attrs))
-        return tag.attrs["value"]
+        tag = next((cand for cand in candidates if "checked" in cand.attrs), None)
+        if tag:
+            return tag.attrs["value"]
+        raise ValueError("No member system radio button is selected.")
 
     def check_if_early_bird(self, page: BeautifulSoup) -> bool:
-        early_bird_keywords = ["早鳥"]
-        return any(keyword in page.text for keyword in early_bird_keywords)
+        return "早鳥" in page.get_text()

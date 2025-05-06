@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 import re
 from configs.web.enums import StationMapping
 
@@ -27,44 +27,38 @@ class TicketBookingValidator:
                 "start_station": self.get_valid_input(
                     "Please enter the start station number (1-12): ",
                     self.is_valid_station,
-                    "Invalid station number, please try again.",
+                    "Invalid station number. Please enter a number between 1 and 12.",
                     int,
                 ),
                 "dest_station": self.get_valid_input(
                     "Please enter the destination station number (1-12): ",
                     self.is_valid_station,
-                    "Invalid station number, please try again.",
+                    "Invalid station number. Please enter a number between 1 and 12.",
                     int,
                 ),
                 "date": self.get_valid_input(
                     "Please enter the date (YYYY/MM/DD): ",
                     self.is_valid_date,
-                    "Invalid date format or past date, please try again.",
+                    "Invalid date format or past date. Please use format YYYY/MM/DD (e.g., 2025/01/01).",
                 ),
             }
 
-            time, next_day_required = self.convert_to_timeslot(
+            time = self.convert_to_timeslot(
                 self.get_valid_input(
                     "Please enter the time (HH:MM): ",
                     self.is_valid_24hr_time,
-                    "Invalid time format, please try again.",
+                    "Invalid time format. Please use 24-hour format HH:MM (e.g., 12:30).",
                 ),
                 self.profile["date"],
             )
             self.profile["time"] = time
-
-            if next_day_required:
-                new_date = datetime.strptime(
-                    self.profile["date"], "%Y/%m/%d"
-                ) + timedelta(days=1)
-                self.profile["date"] = new_date.strftime("%Y/%m/%d")
 
             self.profile["ID_number"] = input("Please enter your ID number: ")
             self.profile["phone_number"] = input("Please enter your phone number: ")
             self.profile["email_address"] = self.get_valid_input(
                 "Please enter your email address: ",
                 self.is_valid_email,
-                "Invalid email address format, please try again.",
+                "Invalid email address format. Please enter a valid address (e.g., johndoe@example.com).",
             )
 
             self.display_profile()
@@ -78,7 +72,10 @@ class TicketBookingValidator:
         print("\nPlease confirm your profile:")
         for key, value in self.profile.items():
             if key in ["start_station", "dest_station"]:
-                value = StationMapping(value).name
+                try:
+                    value = StationMapping(value).name
+                except Exception:
+                    value = f"Station {value}"
             print(f"{key.replace('_', ' ').title()}: {value}")
 
     def confirm_profile(self):
@@ -123,17 +120,7 @@ class TicketBookingValidator:
         input_datetime = datetime.strptime(
             input_date + " " + input_time, "%Y/%m/%d %H:%M"
         )
-        next_day_required = False
-
-        last_time_of_day = datetime.strptime(input_date + " 23:59", "%Y/%m/%d %H:%M")
-
-        if input_datetime > last_time_of_day:
-            next_day_required = True
-            input_datetime = datetime.strptime(
-                input_date + " 00:01", "%Y/%m/%d %H:%M"
-            ) + timedelta(days=1)
-
-        return input_datetime.strftime("%H:%M"), next_day_required
+        return input_datetime.strftime("%H:%M")
 
 
 if __name__ == "__main__":

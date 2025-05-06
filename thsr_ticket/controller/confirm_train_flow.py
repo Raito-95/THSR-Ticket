@@ -9,10 +9,17 @@ from configs.web.param_schema import ConfirmTrainModel, Train
 
 
 class ConfirmTrainFlow:
-    def __init__(self, client: HTTPRequest, book_resp: Response, data_dict: dict):
+    def __init__(
+        self,
+        client: HTTPRequest,
+        book_resp: Response,
+        data_dict: dict,
+        verbose: bool = False,
+    ):
         self.client = client
         self.book_resp = book_resp
         self.data_dict = data_dict
+        self.verbose = verbose
 
     def run(self) -> Tuple[Response, ConfirmTrainModel]:
         trains = AvailTrains().parse(self.book_resp.content)
@@ -27,36 +34,41 @@ class ConfirmTrainFlow:
         }
 
         confirm_model = ConfirmTrainModel(**data)
-
         json_params = confirm_model.model_dump_json(by_alias=True)
         dict_params = json.loads(json_params)
         resp = self.client.submit_train(dict_params)
         return resp, confirm_model
 
     def select_available_trains(self, trains: List[Train]) -> Train:
-        filtered_trains = self.filter_trains_by_time(trains)
-        return self.find_shortest_train(filtered_trains)
+        if self.verbose:
+            print("I: Listing all available trains:")
+            for train in trains:
+                print(f"- Train {train.train_no}: {train.depart} → {train.arrive}")
+        return self.find_shortest_train(trains)
 
     def filter_trains_by_time(self, trains: List[Train]) -> List[Train]:
         input_time = self.data_dict["time"]
-        time_obj = datetime.strptime(input_time, "%H:%M")
-        formatted_time = time_obj.strftime("%H:%M")
-
-        desired_time = datetime.strptime(formatted_time, "%H:%M").time()
-        end_time = (
-            datetime.combine(datetime.today(), desired_time) + timedelta(hours=1, minutes=0)
-        ).time()
+        user_time = datetime.strptime(input_time, "%H:%M")
+        search_duration = timedelta(minutes=60)
+        user_end_time = user_time + search_duration
 
         filtered_trains = []
         for train in trains:
             try:
-                train_depart_time = datetime.strptime(
-                    train.depart.strip().zfill(5), "%H:%M"
-                ).time()
-                if desired_time <= train_depart_time <= end_time:
+                depart_str = train.depart.strip().zfill(5)
+                depart_time = datetime.strptime(depart_str, "%H%M")
+
+                if user_time <= depart_time <= user_end_time or (
+                    user_end_time.day > user_time.day and depart_time.hour < 5
+                ):
                     filtered_trains.append(train)
-            except Exception:
+            except Exception as e:
+                if self.verbose:
+                    print(f"W: Failed to parse train depart time: {e}")
                 continue
+
+        if self.verbose:
+            print(f"I: Found {len(filtered_trains)} trains in desired time window.")
 
         return filtered_trains
 
@@ -68,16 +80,25 @@ class ConfirmTrainFlow:
             try:
                 depart_time = datetime.strptime(train.depart.strip(), "%H:%M")
                 arrive_time = datetime.strptime(train.arrive.strip(), "%H:%M")
+
+                if arrive_time < depart_time:
+                    arrive_time += timedelta(days=1)
+
                 duration = arrive_time - depart_time
 
                 if duration < min_duration:
                     min_duration = duration
                     selected_train = train
-            except Exception:
+            except Exception as e:
+                if self.verbose:
+                    print(f"W: Failed to calculate train duration: {e}")
                 continue
 
         if selected_train:
-            print(f"Selected train: {selected_train.depart}~{selected_train.arrive}")
+            if self.verbose:
+                print(
+                    f"I: Selected train: {selected_train.depart} ~ {selected_train.arrive}"
+                )
             return selected_train
         else:
             raise ValueError("No suitable trains found in the desired time range.")

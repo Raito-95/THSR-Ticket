@@ -20,22 +20,22 @@ class AvailTrains(AbstractViewModel):
     def _parse_train(self, avail: List[Tag]) -> List[Train]:
         for item in avail:
             train_input = item.find("input", class_="uk-radio")
-
             if not train_input:
                 continue
 
             try:
-                train_id = int(train_input["QueryCode"])
-                depart_time = train_input["QueryDeparture"]
-                arrival_time = train_input["QueryArrival"]
-                travel_time = train_input["QueryEstimatedTime"]
-                form_value = train_input["value"]
+                attrs = train_input.attrs
+
+                train_id = int(attrs.get("QueryCode", "0"))
+                depart_time = attrs.get("QueryDeparture", "00:00")
+                arrival_time = attrs.get("QueryArrival", "00:00")
+                travel_time = attrs.get("QueryEstimatedTime", "")
+                form_value = attrs.get("value", "")
+
+                if not form_value:
+                    continue
 
                 discount_str = self._parse_discount(item)
-
-                print(
-                    f"Train {train_id}: {depart_time} → {arrival_time} ({travel_time})"
-                )
 
                 self.avail_trains.append(
                     Train(
@@ -47,6 +47,7 @@ class AvailTrains(AbstractViewModel):
                         form_value=form_value,
                     )
                 )
+
             except Exception:
                 continue
 
@@ -58,6 +59,4 @@ class AvailTrains(AbstractViewModel):
             discounts.append(tag.find_next().text)
         if tag := item.find(**self.cond.college_student_discount):
             discounts.append(tag.find_next().text)
-        if discounts:
-            return ", ".join(discounts)
-        return ""
+        return ", ".join(discounts) if discounts else ""

@@ -15,37 +15,39 @@ from extra import image_process
 
 
 class FirstPageFlow:
-    def __init__(self, client: HTTPRequest, data_dict: Dict[str, str]) -> None:
+    def __init__(
+        self, client: HTTPRequest, data_dict: Dict[str, str], verbose: bool = True
+    ) -> None:
         self.client = client
         self.data_dict = data_dict
+        self.verbose = verbose
 
     def run(self) -> Tuple[Response, BookingModel]:
         book_page = self.client.request_booking_page().content
         page = BeautifulSoup(book_page, features="html.parser")
-
         captcha_img_resp = self.client.request_security_code_img(book_page).content
 
-        start_station = self.select_station("start")
-        dest_station = self.select_station(
-            "dest", default_value=StationMapping.Zuoying.value
-        )
-        search_by = self.parse_search_by(page)
-        trip_con = self.parse_types_of_trip_value(page)
-        outbound_date = self.select_date("date")
-        outbound_time = self.select_time("time")
-        security_code = self.input_security_code(captcha_img_resp)
+        form_data = self.compose_form_data(page, captcha_img_resp)
 
-        data = {
-            "selectStartStation": start_station,
-            "selectDestinationStation": dest_station,
-            "bookingMethod": search_by,
-            "tripCon:typesoftrip": trip_con,
-            "toTimeInputField": outbound_date,
-            "toTimeTable": outbound_time,
-            "homeCaptcha:securityCode": security_code,
-            "seatCon:seatRadioGroup": 1,  # Default to window seat preference
+        book_model = BookingModel(**form_data)
+        json_params = book_model.model_dump_json(by_alias=True)
+        dict_params = json.loads(json_params)
+
+        resp = self.client.submit_booking_form(dict_params)
+        return resp, book_model
+
+    def compose_form_data(self, page: BeautifulSoup, captcha_img: bytes) -> Dict:
+        return {
+            "selectStartStation": self.select_station("start"),
+            "selectDestinationStation": self.select_station("dest", StationMapping.Zuoying.value),
+            "bookingMethod": self.parse_search_by(page),
+            "tripCon:typesoftrip": self.parse_types_of_trip_value(page),
+            "toTimeInputField": self.select_date("date"),
+            "toTimeTable": self.select_time("time"),
+            "homeCaptcha:securityCode": self.input_security_code(captcha_img),
+            "seatCon:seatRadioGroup": 1,
             "BookingS1Form:hf:0": "",
-            "trainCon:trainRadioGroup": 0,  # Ticket type: 0 for one-way ticket, 1 for round-trip ticket
+            "trainCon:trainRadioGroup": 0,
             "backTimeInputField": None,
             "backTimeTable": None,
             "toTrainIDInputField": None,
@@ -55,34 +57,31 @@ class FirstPageFlow:
             "ticketPanel:rows:2:ticketAmount": self.select_ticket_num(TicketType.DISABLED),
             "ticketPanel:rows:3:ticketAmount": self.select_ticket_num(TicketType.ELDER),
             "ticketPanel:rows:4:ticketAmount": self.select_ticket_num(TicketType.COLLEGE),
-            "trainTypeContainer:typesoftrain": 0,  # Default to include all train types (regular tickets and early bird tickets)
+            "trainTypeContainer:typesoftrain": 0,
         }
-
-        book_model = BookingModel(**data)
-
-        json_params = book_model.model_dump_json(by_alias=True)
-        dict_params = json.loads(json_params)
-        resp = self.client.submit_booking_form(dict_params)
-        return resp, book_model
 
     def select_station(
         self, station_type: str, default_value: int = StationMapping.Taipei.value
     ) -> int:
         station_key = station_type + "_station"
         selected_station = int(self.data_dict.get(station_key, default_value))
-        print(
-            f"Selected {station_type.capitalize()} Station: {StationMapping(selected_station).name} Station"
-        )
+        if self.verbose:
+            print(f"{station_type.capitalize()} Station: {StationMapping(selected_station).name} Station")
         return selected_station
 
     def select_date(self, date_key: str) -> str:
         selected_date = self.data_dict[date_key]
-        print(f"Selected Departure Date: {selected_date}")
+        if self.verbose:
+            print(f"Departure Date: {selected_date}")
         return selected_date
 
     def select_time(self, time_key: str) -> str:
         input_time = self.data_dict[time_key]
-        time_obj = datetime.strptime(input_time, "%H:%M")
+        try:
+            time_obj = datetime.strptime(input_time, "%H:%M")
+        except ValueError:
+            raise ValueError(f"Invalid time format '{input_time}', expected HH:MM (e.g., 14:30)")
+
         formatted_time = (
             time_obj.strftime("%I%M%p")
             .replace("AM", "A")
@@ -92,10 +91,11 @@ class FirstPageFlow:
         )
 
         if formatted_time in AVAILABLE_TIME_TABLE:
-            print(f"Selected Departure Time: {input_time}")
+            if self.verbose:
+                print(f"Departure Time: {input_time}")
             return formatted_time
 
-        raise ValueError("Invalid time slot")
+        raise ValueError(f"Invalid time slot '{formatted_time}'. Must be one of: {sorted(AVAILABLE_TIME_TABLE)}")
 
     def select_ticket_num(
         self, ticket_type: TicketType, default_ticket_num: int = 0
@@ -111,7 +111,9 @@ class FirstPageFlow:
         if ticket_type == TicketType.ADULT:
             default_ticket_num = 1
 
-        print(f"Selected {default_ticket_num} {ticket_type_name} Ticket(s)")
+        if self.verbose and default_ticket_num >= 1:
+            print(f"{default_ticket_num} {ticket_type_name} Ticket(s)")
+
         return f"{default_ticket_num}{ticket_type.value}"
 
     def parse_search_by(self, page: BeautifulSoup) -> str:
@@ -119,7 +121,7 @@ class FirstPageFlow:
         tag = next((cand for cand in candidates if "checked" in cand.attrs), None)
         if tag:
             return tag.attrs["value"]
-        raise ValueError("No search by value found")
+        raise ValueError("Failed to parse 'bookingMethod'. Possibly incorrect or outdated page structure.")
 
     def parse_types_of_trip_value(self, page: BeautifulSoup) -> int:
         options = page.find(**BOOKING_PAGE["types_of_trip"])
@@ -127,13 +129,14 @@ class FirstPageFlow:
             tag = options.find_next(selected="selected")
             if tag:
                 return int(tag.attrs["value"])
-        raise ValueError("No types of trip value found")
+        raise ValueError("No trip type value found in page")
 
     def input_security_code(self, img_resp: bytes) -> str:
         try:
             image = Image.open(io.BytesIO(img_resp))
             result = image_process.verify_code(image)
-            # print(f"Verification Code: {result}")
+            # if self.verbose:
+            #     print(f"Recognized Security Code: {result}")
             return result
         except Exception:
             raise ValueError("Error processing security code")

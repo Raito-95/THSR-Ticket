@@ -1,21 +1,24 @@
 # THSR Ticket Booking System
 
-This script automates the booking process for Taiwan High-Speed Rail (THSR) tickets via a user-friendly command-line interface. It can now correctly handle early bird tickets when encountered during the booking process. However, users cannot manually select early bird tickets. If an early bird ticket is automatically selected, the script will prompt the user to enter their ID number. Promotional ticket types other than early bird are not yet implemented or tested.
+This script automates the booking process for Taiwan High-Speed Rail (THSR) tickets through a command-line interface. It is capable of handling early bird tickets automatically, using previously entered identification details when required.
+
+> Note: Manual selection of early bird or other promotional ticket types is not currently supported.
 
 ## Features
 
-- Automates ticket booking for THSR.
-- Validates user input for dates, times, and station numbers.
-- Selects the train with the shortest travel time within an hour of the provided time slot.
-- Supports travel between all THSR stations.
-- Prompts for ID number if an early bird ticket is selected.
-- Currently supports only one-way tickets (round-trip not supported).
+- Automates THSR ticket booking via CLI.
+- Validates station codes, dates, and time formats.
+- Selects the shortest-duration train within 1 hour of the specified time.
+- Automatically handles early bird tickets using previously entered ID information.
+- Supports travel between all 12 THSR stations.
+- Verbose mode for logging and debugging.
+- Currently supports only one-way tickets.
 
 ## System Requirements
 
-- Python 3.10 or higher  
-- Internet connection  
-- Developed and tested on Windows. Compatibility with macOS and Linux has not been fully verified.
+- Python 3.10 or higher
+- Internet connection
+- Tested on Windows (macOS/Linux compatibility unverified)
 
 ## Installation
 
@@ -25,7 +28,7 @@ This script automates the booking process for Taiwan High-Speed Rail (THSR) tick
    git clone https://github.com/Raito-95/THSR-Ticket.git
    ```
 
-2. **Navigate to the Directory**
+2. **Navigate to the Project Directory**
 
    ```bash
    cd THSR-Ticket
@@ -39,65 +42,79 @@ This script automates the booking process for Taiwan High-Speed Rail (THSR) tick
 
 ## Usage
 
-Run the script using Python:
+Execute the script with:
 
 ```bash
 python ./thsr_ticket/main.py
 ```
 
-Follow the prompts to enter:
+The script will prompt for the following inputs:
 
 - Start Station (1–12)
 - Destination Station (1–12)
-- Date (YYYY/MM/DD)
-- Time (HH:MM)
+- Travel Date (YYYY/MM/DD)
+- Travel Time (HH\:MM, 24-hour format)
 - ID Number
 - Phone Number
 - Email Address
 
-## Test Mode
+### Verbose Mode
 
-To run the script in test mode using a JSON file for input:
+To enable verbose output:
+
+```bash
+python ./thsr_ticket/main.py --verbose
+```
+
+### Test Mode
+
+To run using a predefined JSON profile:
 
 ```bash
 python ./thsr_ticket/main.py -t profile.json
 ```
 
+Verbose output can also be enabled in test mode:
+
+```bash
+python ./thsr_ticket/main.py -t profile.json --verbose
+```
+
+#### Example `profile.json` format:
+
 ```json
 {
-    "start_station": "1",
-    "dest_station": "2",
-    "date": "YYYY/MM/DD",
-    "time": "HH:MM",
-    "ID_number": "",
-    "phone_number": "",
-    "email_address": ""
+  "start_station": "1",
+  "dest_station": "2",
+  "date": "2025/05/20",
+  "time": "15:00",
+  "ID_number": "A123456789",
+  "phone_number": "0912345678",
+  "email_address": "user@example.com"
 }
 ```
 
-## Stations Reference
+## Station Reference
 
-1. Nangang  
-2. Taipei  
-3. Banqiao  
-4. Taoyuan  
-5. Hsinchu  
-6. Miaoli  
-7. Taichung  
-8. Changhua  
-9. Yunlin  
-10. Chiayi  
-11. Tainan  
+1. Nangang
+2. Taipei
+3. Banqiao
+4. Taoyuan
+5. Hsinchu
+6. Miaoli
+7. Taichung
+8. Changhua
+9. Yunlin
+10. Chiayi
+11. Tainan
 12. Zuoying
 
 ## Troubleshooting
 
-If you encounter issues, check the following:
-
-- Python version is 3.10 or higher  
-- All required packages are installed (`pip install -r requirements.txt`)  
-- Stable internet connection
+- Ensure Python version is 3.10 or above.
+- Confirm that required packages are installed (`pip install -r requirements.txt`).
+- Verify a stable internet connection.
 
 ## Disclaimer
 
-This script is intended for educational or personal use. Users are responsible for complying with THSR’s official website terms and conditions.
+This software is intended for educational or personal use only. Use of the script must comply with the terms and conditions of the official THSR website.
