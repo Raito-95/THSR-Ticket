@@ -9,6 +9,15 @@ ENV/
 env.bak/
 venv.bak/
 
+# uv
+.uv/
+uv-cache/
+__pypackages__/
+.python-version
+
+# uv lock
+uv.lock
+
 .pipenv/
 .pipenv
 pipfile.lock
@@ -54,5 +63,47 @@ coverage.xml
 
 .mypy_cache/
 *.json
-
 .pyre/
+
+# Ruff
+.ruff_cache/
+
+# Pyright / Pylance
+.pyright/
+
+# pytest
+.pytest_cache/
+
+# Nox
+.nox/
+
+# uv build temp
+*.whl
+
+# PDM / Poetry / Hatch
+.pdm-build/
+.pdm-python/
+.poetry/
+poetry.lock
+.hatch/
+.hatch_cache/
+
+# C extensions / compiled modules
+*.so
+*.pyd
+*.dll
+*.dylib
+
+# Packaging metadata
+*.manifest
+*.spec
+
+# VSCode testing artifacts
+.vscode-test/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+Desktop.ini

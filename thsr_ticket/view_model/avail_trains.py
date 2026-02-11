@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from bs4.element import Tag
 
 from view_model.abstract_view_model import AbstractViewModel
@@ -8,55 +8,86 @@ from configs.web.param_schema import Train
 
 class AvailTrains(AbstractViewModel):
     def __init__(self) -> None:
-        super(AvailTrains, self).__init__()
-        self.avail_trains: List[Train] = []
+        super().__init__()
         self.cond = ParseAvailTrain()
 
     def parse(self, html: bytes) -> List[Train]:
         page = self._parser(html)
-        avail = page.find_all("label", **self.cond.from_html)
-        return self._parse_train(avail)
 
-    def _parse_train(self, avail: List[Tag]) -> List[Train]:
-        for item in avail:
-            train_input = item.find("input", class_="uk-radio")
-            if not train_input:
-                continue
+        radios = page.find_all(
+            "input",
+            attrs={
+                "name": "TrainQueryDataViewPanel:TrainGroup",
+                "type": "radio",
+            },
+        )
 
-            try:
-                attrs = train_input.attrs
+        trains: List[Train] = []
+        for r in radios:
+            t = self._parse_train_input(r)
+            if t is not None:
+                trains.append(t)
 
-                train_id = int(attrs.get("QueryCode", "0"))
-                depart_time = attrs.get("QueryDeparture", "00:00")
-                arrival_time = attrs.get("QueryArrival", "00:00")
-                travel_time = attrs.get("QueryEstimatedTime", "")
-                form_value = attrs.get("value", "")
+        return trains
 
-                if not form_value:
-                    continue
+    def _parse_train_input(self, r: Tag) -> Optional[Train]:
+        attrs = r.attrs
 
-                discount_str = self._parse_discount(item)
+        form_value = self._get_attr(attrs, "value")
+        if not form_value:
+            return None
 
-                self.avail_trains.append(
-                    Train(
-                        id=train_id,
-                        depart=depart_time,
-                        arrive=arrival_time,
-                        travel_time=travel_time,
-                        discount_str=discount_str,
-                        form_value=form_value,
-                    )
-                )
+        query_code = self._get_attr(attrs, "QueryCode")
+        depart_time = self._get_attr(attrs, "QueryDeparture")
+        arrival_time = self._get_attr(attrs, "QueryArrival")
+        travel_time = self._get_attr(attrs, "QueryEstimatedTime") or ""
 
-            except Exception:
-                continue
+        if not (query_code and depart_time and arrival_time):
+            return None
 
-        return self.avail_trains
+        try:
+            train_id = int(str(query_code))
+        except Exception:
+            return None
+
+        discount_str = ""
+        parent_label = r.find_parent("label")
+        if parent_label:
+            discount_str = self._parse_discount(parent_label)
+
+        return Train(
+            id=train_id,
+            depart=depart_time,
+            arrive=arrival_time,
+            travel_time=travel_time,
+            discount_str=discount_str,
+            form_value=form_value,
+        )
+
+    def _get_attr(self, attrs: dict, key: str) -> Optional[str]:
+        v = attrs.get(key)
+        if v is not None:
+            return str(v)
+
+        v = attrs.get(key.lower())
+        if v is not None:
+            return str(v)
+
+        return None
 
     def _parse_discount(self, item: Tag) -> str:
         discounts = []
-        if tag := item.find(**self.cond.early_bird_discount):
-            discounts.append(tag.find_next().text)
-        if tag := item.find(**self.cond.college_student_discount):
-            discounts.append(tag.find_next().text)
+
+        tag = item.find(**self.cond.early_bird_discount)
+        if tag:
+            nxt = tag.find_next()
+            if nxt and getattr(nxt, "text", None):
+                discounts.append(nxt.text)
+
+        tag = item.find(**self.cond.college_student_discount)
+        if tag:
+            nxt = tag.find_next()
+            if nxt and getattr(nxt, "text", None):
+                discounts.append(nxt.text)
+
         return ", ".join(discounts) if discounts else ""
