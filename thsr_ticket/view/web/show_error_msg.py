@@ -1,7 +1,7 @@
 from typing import List
 
-from thsr_ticket.view.web.abstract_show import AbstractShow
-from thsr_ticket.view_model.error_feedback import Error
+from view.web.abstract_show import AbstractShow
+from view_model.error_feedback import Error
 
 
 class ShowErrorMsg(AbstractShow):

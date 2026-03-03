@@ -1,82 +1,134 @@
-# 高鐵訂票小幫手
+# THSR Ticket Booking System
 
-**!!--純研究用途，請勿用於不當用途--!!**
+This script automates the booking process for Taiwan High-Speed Rail (THSR) tickets through a command-line interface. It is capable of handling early bird tickets automatically, using previously entered identification details when required.
 
-此程式提供另一種輕便的方式訂購高鐵車票，操作介面為命令列介面。相較於使用網頁訂購，本程式因為省卻了渲染網頁介面的時間，只保留最核心的訂購功能，因此能省下大量等待的時間。
+> Note: Manual selection of early bird or other promotional ticket types is not currently supported.
 
-**(2025/05/12 update)** 另有 Rust 新版本提供執行檔、早鳥票預訂、會員購票等新功能，可以參考 [thsr-ticket-rs](https://github.com/BreezeWhite/thsr-ticket-rs)
+## Features
 
-## 執行
+- Automates THSR ticket booking via CLI.
+- Validates station codes, dates, and time formats.
+- Selects the shortest-duration train within 90 minutes of the specified time.
+- Automatically handles early bird tickets using previously entered ID information.
+- Supports travel between all 12 THSR stations.
+- Verbose mode for logging and debugging.
+- Currently supports only one-way tickets.
 
-本程式由python語言所寫成，因此必須先安裝python才能夠使用。官方下載網址[點這裡](https://www.python.org/downloads/release/python-381/)
+## System Requirements
 
-### 方法一 （快速）
-在已經有安裝好python的環境下，執行以下指令
-``` bash
-pip install git+https://github.com/BreezeWhite/THSR-Ticket.git
+- Python 3.10 or higher
+- Internet connection
+- Tested on Windows (macOS/Linux compatibility unverified)
 
-# 執行
-thsr-ticket
+## Installation
+
+1. **Clone the Repository**
+
+   ```bash
+   git clone https://github.com/Raito-95/THSR-Ticket.git
+   ```
+
+2. **Navigate to the Project Directory**
+
+   ```bash
+   cd THSR-Ticket
+   ```
+
+3. **Install Required Packages**
+
+   ```bash
+   python -m pip install -r requirements.txt
+   ```
+
+## Usage
+
+Execute the script with:
+
+```bash
+python ./thsr_ticket/main.py
 ```
 
-### 方法二
-首先先將程式碼下載到本機，執行以下指令或是直接按右上方的下載按鈕
+The script will prompt for the following inputs:
 
-```
-git clone https://github.com/BreezeWhite/THSR-Ticket.git
-```
+- Start Station (1–12)
+- Destination Station (1–12)
+- Travel Date (YYYY/MM/DD)
+- Travel Time (HH\:MM, 24-hour format)
+- ID Number
+- Phone Number
+- Email Address
 
-再來進入到資料夾中
+### Verbose Mode
 
-```
-cd thsr_ticket
-```
+To enable verbose output:
 
-安裝必要的套件
-
-```
-python -m pip install -r requirements.txt
-```
-
-最後執行程式
-
-```
-python thsr_ticket/main.py
+```bash
+python ./thsr_ticket/main.py --verbose
 ```
 
+### Test Mode
 
+To run using a predefined JSON profile:
 
-## 注意事項!!!
+```bash
+python ./thsr_ticket/main.py -t profile.json
+```
 
-本程式依舊有許多尚未完成的部分，僅具備基本訂購的功能，若是僅需要訂購成人票、且無特殊需求者，此程式對您而言是加速訂購流程的方便小工具。不符合以上描述者，目前仍建議使用官方網頁進行訂購。
+Verbose output can also be enabled in test mode:
 
-#### 提供功能
+```bash
+python ./thsr_ticket/main.py -t profile.json --verbose
+```
 
-- [x] 選擇啟程、到達站
-- [x] 選擇出發日期、時間
-- [x] 選擇班次
-- [x] 選擇**"成人"**票數
-- [x] 輸入驗證碼
-- [x] 輸入身分證字號
-- [x] 輸入手機號碼
-- [x] 保留此次輸入紀錄，下次可快速選擇此次紀錄
+### Structure Inspection Mode (No Booking by Default)
 
-#### 未提供功能
+To inspect page/form structures without creating a booking:
 
-以下功能為未提供輸入的選項，但程式具備相關功能，可依照自身需求、對程式進行修改
+```bash
+python ./thsr_ticket/inspect_thsr_structure.py -p profile.json --verbose
+```
 
-- [ ] 選擇車廂種類(標準/商務)
-- [ ] 座位喜好(靠窗/走道)
-- [ ] 訂位方式(依時間搜尋車次/直接輸入車次號碼)
-- [ ] 輸入孩童/愛心/敬老/學生優惠票數
-- [ ] 僅顯示早鳥優惠票
+Behavior:
 
-#### 未完成功能
+- Dumps HTML/JSON snapshots to `debug_dump/`.
+- Does **not** submit S3/S4 booking requests unless you explicitly pass `--allow-booking --go-s4`.
+- Generated inspection artifacts under `debug_dump/` are ignored by Git.
 
-- [ ] 重新產生認證碼
-- [ ] 語音播放認證碼
-- [ ] 重新查詢車次
-- [ ] 輸入護照號碼
-- [ ] 輸入市話
-- [ ] 輸入電子郵件
-- [ ] 會員購票
+#### Example `profile.json` format:
+
+```json
+{
+  "start_station": "1",
+  "dest_station": "2",
+  "date": "2025/05/20",
+  "time": "15:00",
+  "ID_number": "A123456789",
+  "phone_number": "0912345678",
+  "email_address": "user@example.com"
+}
+```
+
+## Station Reference
+
+1. Nangang
+2. Taipei
+3. Banqiao
+4. Taoyuan
+5. Hsinchu
+6. Miaoli
+7. Taichung
+8. Changhua
+9. Yunlin
+10. Chiayi
+11. Tainan
+12. Zuoying
+
+## Troubleshooting
+
+- Ensure Python version is 3.10 or above.
+- Confirm that required packages are installed (`pip install -r requirements.txt`).
+- Verify a stable internet connection.
+
+## Disclaimer
+
+This software is intended for educational or personal use only. Use of the script must comply with the terms and conditions of the official THSR website.

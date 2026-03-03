@@ -1,146 +1,199 @@
 import io
 import json
+import re
+from datetime import datetime
+from typing import Any, Dict, List, Tuple, cast
 from PIL import Image
-from typing import Tuple
-from datetime import date, timedelta
-
 from bs4 import BeautifulSoup
 from requests.models import Response
 
-from thsr_ticket.model.db import Record
-from thsr_ticket.remote.http_request import HTTPRequest
-from thsr_ticket.configs.web.param_schema import BookingModel
-from thsr_ticket.configs.web.parse_html_element import BOOKING_PAGE
-from thsr_ticket.configs.web.enums import StationMapping, TicketType
-from thsr_ticket.configs.common import (
-    AVAILABLE_TIME_TABLE,
-    DAYS_BEFORE_BOOKING_AVAILABLE,
-    MAX_TICKET_NUM,
-)
+from remote.http_request import HTTPRequest
+from configs.web.param_schema import BookingModel, BookingRequestParams
+from configs.web.parse_html_element import BOOKING_PAGE
+from configs.web.enums import StationMapping
+from configs.common import AVAILABLE_TIME_TABLE
+from extra import image_process
 
 
 class FirstPageFlow:
-    def __init__(self, client: HTTPRequest, record: Record = None) -> None:
+    def __init__(
+        self, client: HTTPRequest, data_dict: Dict[str, str], verbose: bool = True
+    ) -> None:
         self.client = client
-        self.record = record
+        self.data_dict = data_dict
+        self.verbose = verbose
 
     def run(self) -> Tuple[Response, BookingModel]:
-        # First page. Booking options
-        print('請稍等...')
         book_page = self.client.request_booking_page().content
-        img_resp = self.client.request_security_code_img(book_page).content
-        page = BeautifulSoup(book_page, features='html.parser')
+        page = BeautifulSoup(book_page, features="html.parser")
+        captcha_img_resp = self.client.request_security_code_img(book_page).content
 
-        book_model = BookingModel(
-            start_station=self.select_station('啟程'),
-            dest_station=self.select_station('到達', default_value=StationMapping.Zuouing.value),
-            outbound_date=self.select_date('出發'),
-            outbound_time=self.select_time('啟程'),
-            adult_ticket_num=self.select_ticket_num(TicketType.ADULT),
-            seat_prefer=_parse_seat_prefer_value(page),
-            types_of_trip=_parse_types_of_trip_value(page),
-            search_by=_parse_search_by(page),
-            security_code=_input_security_code(img_resp),
+        form_data = self.compose_form_data(page, captcha_img_resp)
+
+        book_model = BookingModel(**form_data)
+        # Keep dynamically discovered fields (e.g., newly added ticket rows).
+        dict_params: Dict[str, Any] = dict(form_data)
+        dict_params.update(
+            json.loads(book_model.model_dump_json(by_alias=True, exclude_none=True))
         )
-        json_params = book_model.json(by_alias=True)
-        dict_params = json.loads(json_params)
-        resp = self.client.submit_booking_form(dict_params)
+
+        resp = self.client.submit_booking_form(cast(BookingRequestParams, dict_params))
         return resp, book_model
 
-    def select_station(self, travel_type: str, default_value: int = StationMapping.Taipei.value) -> int:
-        if (
-            self.record
-            and (
-                station := {
-                    '啟程': self.record.start_station,
-                    '到達': self.record.dest_station,
-                }.get(travel_type)
-            )
-        ):
-            return station
+    def compose_form_data(self, page: BeautifulSoup, captcha_img: bytes) -> Dict:
+        data = {
+            "selectStartStation": self.select_station("start"),
+            "selectDestinationStation": self.select_station(
+                "dest", StationMapping.Zuoying.value
+            ),
+            "bookingMethod": self.parse_search_by(page),
+            "tripCon:typesoftrip": self.parse_types_of_trip_value(page),
+            "toTimeInputField": self.select_date("date"),
+            "toTimeTable": self.select_time(page, "time"),
+            "homeCaptcha:securityCode": self.input_security_code(captcha_img),
+            "seatCon:seatRadioGroup": 1,
+            "BookingS1Form:hf:0": "",
+            "trainCon:trainRadioGroup": 0,
+            "backTimeInputField": None,
+            "backTimeTable": None,
+            "toTrainIDInputField": None,
+            "backTrainIDInputField": None,
+            "trainTypeContainer:typesoftrain": 0,
+        }
+        data.update(self.compose_ticket_amounts(page))
+        return data
 
-        print(f'選擇{travel_type}站：')
-        for station in StationMapping:
-            print(f'{station.value}. {station.name}')
+    def compose_ticket_amounts(self, page: BeautifulSoup) -> Dict[str, str]:
+        name_pat = re.compile(r"^ticketPanel:rows:\d+:ticketAmount$")
+        selects = page.find_all("select", attrs={"name": name_pat})
 
-        return int(
-            input(f'輸入選擇(預設: {default_value})：')
-            or default_value
+        if len(selects) == 0:
+            # Fallback to legacy fixed rows if dynamic fields are not present.
+            return {
+                "ticketPanel:rows:0:ticketAmount": "1F",
+                "ticketPanel:rows:1:ticketAmount": "0H",
+                "ticketPanel:rows:2:ticketAmount": "0W",
+                "ticketPanel:rows:3:ticketAmount": "0E",
+                "ticketPanel:rows:4:ticketAmount": "0P",
+            }
+
+        ticket_amounts: Dict[str, str] = {}
+        values_by_name: Dict[str, List[str]] = {}
+
+        for select in selects:
+            field_name = str(select.get("name", "")).strip()
+            if not field_name:
+                continue
+
+            values = [
+                str(opt.get("value", "")).strip()
+                for opt in select.find_all("option")
+                if opt.get("value") is not None
+            ]
+            values_by_name[field_name] = values
+            zero_value = self.pick_default_zero_ticket(values)
+            ticket_amounts[field_name] = zero_value
+
+        # Always default one adult ticket when an adult code exists.
+        for field_name, values in values_by_name.items():
+            if "1F" in values:
+                ticket_amounts[field_name] = "1F"
+                break
+
+        if self.verbose:
+            selected_values = ", ".join(f"{k}={v}" for k, v in ticket_amounts.items())
+            print(f"I: Ticket amount fields: {selected_values}")
+
+        return ticket_amounts
+
+    def pick_default_zero_ticket(self, values: List[str]) -> str:
+        if not values:
+            return "0"
+        zero_code = next((v for v in values if re.fullmatch(r"0[A-Z]", v)), None)
+        if zero_code:
+            return zero_code
+        return values[0]
+
+    def select_station(
+        self, station_type: str, default_value: int = StationMapping.Taipei.value
+    ) -> int:
+        station_key = station_type + "_station"
+        selected_station = int(self.data_dict.get(station_key, default_value))
+        if self.verbose:
+            print(f"{station_type.capitalize()} Station: {StationMapping(selected_station).name} Station")
+        return selected_station
+
+    def select_date(self, date_key: str) -> str:
+        selected_date = self.data_dict[date_key]
+        if self.verbose:
+            print(f"Departure Date: {selected_date}")
+        return selected_date
+
+    def parse_available_time_slots(self, page: BeautifulSoup) -> List[str]:
+        slot_select = page.find("select", attrs={"name": "toTimeTable"})
+        if not slot_select:
+            return list(AVAILABLE_TIME_TABLE)
+
+        values = []
+        for opt in slot_select.find_all("option"):
+            val = str(opt.get("value", "")).strip()
+            if val:
+                values.append(val)
+        return values or list(AVAILABLE_TIME_TABLE)
+
+    def select_time(self, page: BeautifulSoup, time_key: str) -> str:
+        input_time = self.data_dict[time_key]
+        try:
+            time_obj = datetime.strptime(input_time, "%H:%M")
+        except ValueError:
+            raise ValueError(f"Invalid time format '{input_time}', expected HH:MM (e.g., 14:30)")
+
+        formatted_time = (
+            time_obj.strftime("%I%M%p")
+            .replace("AM", "A")
+            .replace("PM", "P")
+            .lstrip("0")
+            .upper()
         )
 
-    def select_date(self, date_type: str) -> str:
-        today = date.today()
-        last_avail_date = today + timedelta(days=DAYS_BEFORE_BOOKING_AVAILABLE)
-        print(f'選擇{date_type}日期（{today}~{last_avail_date}）（預設為今日）：')
-        return input() or str(today)
+        available_time_slots = set(self.parse_available_time_slots(page))
 
-    def select_time(self, time_type: str, default_value: int = 10) -> str:
-        if self.record and (
-            time_str := {
-                '啟程': self.record.outbound_time,
-                '回程': None,
-            }.get(time_type)
-        ):
-            return time_str
+        if formatted_time in available_time_slots:
+            if self.verbose:
+                print(f"Departure Time: {input_time}")
+            return formatted_time
 
-        print('選擇出發時間：')
-        for idx, t_str in enumerate(AVAILABLE_TIME_TABLE):
-            t_int = int(t_str[:-1])
-            if t_str[-1] == "A" and (t_int // 100) == 12:
-                t_int = "{:04d}".format(t_int % 1200)  # type: ignore
-            elif t_int != 1230 and t_str[-1] == "P":
-                t_int += 1200
-            t_str = str(t_int)
-            print(f'{idx+1}. {t_str[:-2]}:{t_str[-2:]}')
+        # Some pages encode 00:00 as 1201A; keep backward compatibility.
+        if formatted_time == "1200A" and "1201A" in available_time_slots:
+            if self.verbose:
+                print(f"Departure Time: {input_time} (mapped to 1201A)")
+            return "1201A"
 
-        selected_opt = int(input(f'輸入選擇（預設：{default_value}）：') or default_value)
-        return AVAILABLE_TIME_TABLE[selected_opt-1]
+        raise ValueError(
+            f"Invalid time slot '{formatted_time}'. Must be one of: {sorted(available_time_slots)}"
+        )
 
-    def select_ticket_num(self, ticket_type: TicketType, default_ticket_num: int = 1) -> str:
-        if self.record and (
-            ticket_num_str := {
-                TicketType.ADULT: self.record.adult_num,
-                TicketType.CHILD: None,
-                TicketType.DISABLED: None,
-                TicketType.ELDER: None,
-                TicketType.COLLEGE: None,
-            }.get(ticket_type)
-        ):
-            return ticket_num_str
+    def parse_search_by(self, page: BeautifulSoup) -> str:
+        candidates = page.find_all("input", {"name": "bookingMethod"})
+        tag = next((cand for cand in candidates if "checked" in cand.attrs), None)
+        if tag:
+            return tag.attrs["value"]
+        raise ValueError("Failed to parse 'bookingMethod'. Possibly incorrect or outdated page structure.")
 
-        ticket_type_name = {
-            TicketType.ADULT: '成人',
-            TicketType.CHILD: '孩童',
-            TicketType.DISABLED: '愛心',
-            TicketType.ELDER: '敬老',
-            TicketType.COLLEGE: '大學生',
-        }.get(ticket_type)
+    def parse_types_of_trip_value(self, page: BeautifulSoup) -> int:
+        options = page.find(**BOOKING_PAGE["types_of_trip"])
+        if options:
+            tag = options.find_next(selected="selected")
+            if tag:
+                return int(tag.attrs["value"])
+        raise ValueError("No trip type value found in page")
 
-        print(f'選擇{ticket_type_name}票數（0~{MAX_TICKET_NUM}）（預設：{default_ticket_num}）')
-        ticket_num = int(input() or default_ticket_num)
-        return f'{ticket_num}{ticket_type.value}'
-
-
-def _parse_seat_prefer_value(page: BeautifulSoup) -> str:
-    options = page.find(**BOOKING_PAGE["seat_prefer_radio"])
-    preferred_seat = options.find_next(selected='selected')
-    return preferred_seat.attrs['value']
-
-
-def _parse_types_of_trip_value(page: BeautifulSoup) -> int:
-    options = page.find(**BOOKING_PAGE["types_of_trip"])
-    tag = options.find_next(selected='selected')
-    return int(tag.attrs['value'])
-
-
-def _parse_search_by(page: BeautifulSoup) -> str:
-    candidates = page.find_all('input', {'name': 'bookingMethod'})
-    tag = next((cand for cand in candidates if 'checked' in cand.attrs))
-    return tag.attrs['value']
-
-
-def _input_security_code(img_resp: bytes) -> str:
-    print('輸入驗證碼：')
-    image = Image.open(io.BytesIO(img_resp))
-    image.show()
-    return input()
+    def input_security_code(self, img_resp: bytes) -> str:
+        try:
+            image = Image.open(io.BytesIO(img_resp))
+            result = image_process.verify_code(image)
+            # if self.verbose:
+            #     print(f"Recognized Security Code: {result}")
+            return result
+        except Exception:
+            raise ValueError("Error processing security code")
