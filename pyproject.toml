@@ -6,11 +6,11 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "beautifulsoup4==4.14.3",
-    "ddddocr==1.5.6",
+    "ddddocr==1.6.1",
     "jsonschema==4.26.0",
-    "numpy==2.2.6",
-    "pillow==12.1.1",
-    "pydantic==2.12.5",
-    "requests==2.32.5",
+    "numpy==2.4.4",
+    "pillow==12.2.0",
+    "pydantic==2.13.4",
+    "requests==2.33.1",
     "truststore==0.10.4",
 ]
