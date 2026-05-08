@@ -1,9 +1,11 @@
 from typing import Tuple, Optional
+
 from requests.models import Response
 
 from controller.confirm_train_flow import ConfirmTrainFlow
 from controller.confirm_ticket_flow import ConfirmTicketFlow
 from controller.first_page_flow import FirstPageFlow
+from html_parser import parse_html
 from view_model.error_feedback import ErrorFeedback
 from view_model.booking_result import BookingResult
 from view.web.show_error_msg import ShowErrorMsg
@@ -12,6 +14,8 @@ from remote.http_request import HTTPRequest
 
 
 class BookingFlow:
+    TICKET_FORM_IDS = {"BookingS3Form", "BookingS3FormSP"}
+
     def __init__(self, user_profile: dict, verbose: bool = False) -> None:
         self.client = HTTPRequest()
         self.user_profile = user_profile
@@ -55,6 +59,11 @@ class BookingFlow:
         return book_resp
 
     def handle_train_confirmation(self, book_resp: Response) -> Response:
+        if self.is_ticket_confirmation_page(book_resp.content):
+            if self.verbose:
+                print("I: S1 returned ticket confirmation page; skipping S2 train selection.")
+            return book_resp
+
         train_resp, _ = ConfirmTrainFlow(
             self.client, book_resp, self.user_profile, verbose=self.verbose
         ).run()
@@ -82,3 +91,7 @@ class BookingFlow:
             return False
         self.show_error_msg.show(errors)
         return True
+
+    def is_ticket_confirmation_page(self, html: bytes) -> bool:
+        page = parse_html(html)
+        return any(page.find("form", attrs={"id": form_id}) for form_id in self.TICKET_FORM_IDS)

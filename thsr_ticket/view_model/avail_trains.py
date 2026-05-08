@@ -11,13 +11,17 @@ class AvailTrains(AbstractViewModel):
         super().__init__()
         self.cond = ParseAvailTrain()
 
-    def parse(self, html: bytes) -> List[Train]:
+    def parse(
+        self,
+        html: bytes,
+        group_name: str = "TrainQueryDataViewPanel:TrainGroup",
+    ) -> List[Train]:
         page = self._parser(html)
 
         radios = page.find_all(
             "input",
             attrs={
-                "name": "TrainQueryDataViewPanel:TrainGroup",
+                "name": group_name,
                 "type": "radio",
             },
         )
@@ -56,7 +60,9 @@ class AvailTrains(AbstractViewModel):
         if parent_label:
             discount_tags = self._parse_discount_tags(parent_label)
             discount_str = ", ".join(discount_tags)
-        has_early_bird = any("early" in t.lower() for t in discount_tags)
+        has_early_bird = any(
+            "early" in t.lower() or "\u65e9\u9ce5" in t for t in discount_tags
+        )
 
         return Train(
             id=train_id,

@@ -1,7 +1,11 @@
+import ssl
+from typing import Any, Optional
+from urllib.parse import urljoin
+
 import requests
+import truststore
 from requests.adapters import HTTPAdapter
 from requests.models import Response
-from bs4 import BeautifulSoup
 from urllib3.util.retry import Retry
 
 from configs.web.http_config import HTTPConfig
@@ -11,6 +15,27 @@ from configs.web.param_schema import (
     ConfirmTicketRequestParams,
     ConfirmTrainRequestParams,
 )
+from html_parser import parse_html
+
+
+class SystemTrustStoreHTTPAdapter(HTTPAdapter):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        self.ssl_context = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        super().__init__(*args, **kwargs)
+
+    def init_poolmanager(
+        self,
+        connections: int,
+        maxsize: int,
+        block: bool = False,
+        **pool_kwargs: Any,
+    ) -> None:
+        pool_kwargs["ssl_context"] = self.ssl_context
+        super().init_poolmanager(connections, maxsize, block=block, **pool_kwargs)
+
+    def proxy_manager_for(self, proxy: str, **proxy_kwargs: Any) -> Any:
+        proxy_kwargs["ssl_context"] = self.ssl_context
+        return super().proxy_manager_for(proxy, **proxy_kwargs)
 
 
 class HTTPRequest:
@@ -25,7 +50,7 @@ class HTTPRequest:
             status_forcelist=[429, 500, 502, 503, 504],
             raise_on_status=False,
         )
-        self.sess.mount("https://", HTTPAdapter(max_retries=retry_cfg))
+        self.sess.mount("https://", SystemTrustStoreHTTPAdapter(max_retries=retry_cfg))
         self.timeout = timeout
 
         self.common_head_html: dict = {
@@ -73,12 +98,18 @@ class HTTPRequest:
 
         return response
 
-    def submit_booking_form(self, params: BookingRequestParams) -> Response:
+    def submit_booking_form(
+        self, params: BookingRequestParams, action_url: Optional[str] = None
+    ) -> Response:
         jsessionid = self.sess.cookies.get("JSESSIONID", None)
         if not jsessionid:
             raise ValueError("No JSESSIONID found. Cannot submit booking form")
 
-        url = HTTPConfig.SUBMIT_FORM_URL.format(jsessionid)
+        url = (
+            self._resolve_url(action_url)
+            if action_url
+            else HTTPConfig.SUBMIT_FORM_URL.format(jsessionid)
+        )
 
         try:
             response = self.sess.post(
@@ -96,10 +127,17 @@ class HTTPRequest:
 
         return response
 
-    def submit_train(self, params: ConfirmTrainRequestParams) -> Response:
+    def submit_train(
+        self, params: ConfirmTrainRequestParams, action_url: Optional[str] = None
+    ) -> Response:
+        url = (
+            self._resolve_url(action_url)
+            if action_url
+            else HTTPConfig.CONFIRM_TRAIN_URL
+        )
         try:
             response = self.sess.post(
-                HTTPConfig.CONFIRM_TRAIN_URL,
+                url,
                 headers=self.common_head_html,
                 data=params,
                 allow_redirects=True,
@@ -113,10 +151,17 @@ class HTTPRequest:
 
         return response
 
-    def submit_ticket(self, params: ConfirmTicketRequestParams) -> Response:
+    def submit_ticket(
+        self, params: ConfirmTicketRequestParams, action_url: Optional[str] = None
+    ) -> Response:
+        url = (
+            self._resolve_url(action_url)
+            if action_url
+            else HTTPConfig.CONFIRM_TICKET_URL
+        )
         try:
             response = self.sess.post(
-                HTTPConfig.CONFIRM_TICKET_URL,
+                url,
                 headers=self.common_head_html,
                 data=params,
                 allow_redirects=True,
@@ -130,10 +175,15 @@ class HTTPRequest:
 
         return response
 
+    def _resolve_url(self, action_url: Optional[str]) -> str:
+        if not action_url:
+            raise ValueError("Form action URL is empty")
+        return urljoin(HTTPConfig.BASE_URL, action_url)
+
 
 def parse_security_img_url(html: bytes) -> str:
-    page = BeautifulSoup(html, features="html.parser")
+    page = parse_html(html)
     element = page.find(**BOOKING_PAGE["security_code_img"])
     if element and "src" in element.attrs:
-        return str(HTTPConfig.BASE_URL) + element["src"]
+        return urljoin(HTTPConfig.BASE_URL, str(element["src"]))
     raise ValueError("Captcha image not found")

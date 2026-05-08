@@ -1,0 +1,49 @@
+{
+  "_help": {
+    "route": "Use station number 1-12 or English station name. See README station reference.",
+    "trip.type": "one_way or round_trip.",
+    "search.method": "time or train_no.",
+    "search.train_type": "all, early_bird, or no_early_bird.",
+    "seat.car": "standard, business, or non_reserved if available.",
+    "seat.preference": "none, window, or aisle.",
+    "tickets": "adult, child, disabled, elder, and college counts.",
+    "passenger": "Fill locally only. Do not commit real ID, phone, or email."
+  },
+  "route": {
+    "start": "nangang",
+    "destination": "taipei"
+  },
+  "trip": {
+    "type": "one_way",
+    "outbound": {
+      "date": "2026/05/09",
+      "time": "08:00",
+      "train_no": ""
+    },
+    "return": {
+      "date": "",
+      "time": "",
+      "train_no": ""
+    }
+  },
+  "search": {
+    "method": "time",
+    "train_type": "all"
+  },
+  "seat": {
+    "car": "standard",
+    "preference": "window"
+  },
+  "tickets": {
+    "adult": 1,
+    "child": 0,
+    "disabled": 0,
+    "elder": 0,
+    "college": 0
+  },
+  "passenger": {
+    "id": "",
+    "phone": "",
+    "email": ""
+  }
+}

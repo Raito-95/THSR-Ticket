@@ -1,11 +1,15 @@
 import json
 from datetime import datetime, timedelta
 from typing import List, Tuple, cast
+from bs4 import BeautifulSoup
 from requests.models import Response
 
 from remote.http_request import HTTPRequest
 from view_model.avail_trains import AvailTrains
 from configs.web.param_schema import ConfirmTrainModel, ConfirmTrainRequestParams, Train
+from controller.form_data import compose_form_defaults, parse_form_action
+from controller.profile_config import normalize_profile
+from html_parser import parse_html
 
 
 class ConfirmTrainFlow:
@@ -18,40 +22,72 @@ class ConfirmTrainFlow:
     ):
         self.client    = client
         self.book_resp = book_resp
-        self.data_dict = data_dict
+        self.data_dict = normalize_profile(data_dict)
         self.verbose   = verbose
 
     def run(self) -> Tuple[Response, ConfirmTrainModel]:
-        trains = AvailTrains().parse(self.book_resp.content)
+        trains = AvailTrains().parse(
+            self.book_resp.content, "TrainQueryDataViewPanel:TrainGroup"
+        )
         if not trains:
             raise ValueError("No available trains!")
 
-        selected_train = self.select_available_trains(trains)
+        selected_train = self.select_available_trains(trains, "outbound_time")
+        page = self._parse_page()
 
-        data = {
+        data = compose_form_defaults(page, "BookingS2Form")
+        data.update({
             "TrainQueryDataViewPanel:TrainGroup": selected_train.form_value,
             "BookingS2Form:hf:0": "",
-        }
+        })
+
+        if self.data_dict["trip_type"] == 1:
+            return_trains = AvailTrains().parse(
+                self.book_resp.content, "TrainQueryDataViewPanel2:TrainGroup"
+            )
+            if not return_trains:
+                raise ValueError("No available return trains!")
+            selected_return_train = self.select_available_trains(
+                return_trains, "return_time"
+            )
+            data["TrainQueryDataViewPanel2:TrainGroup"] = (
+                selected_return_train.form_value
+            )
 
         confirm_model = ConfirmTrainModel(**data)
-        dict_params   = json.loads(confirm_model.model_dump_json(by_alias=True))
+        dict_params = dict(data)
+        dict_params.update(
+            json.loads(
+                confirm_model.model_dump_json(by_alias=True, exclude_none=True)
+            )
+        )
 
-        resp = self.client.submit_train(cast(ConfirmTrainRequestParams, dict_params))
+        resp = self.client.submit_train(
+            cast(ConfirmTrainRequestParams, dict_params),
+            action_url=parse_form_action(page, "BookingS2Form"),
+        )
         return resp, confirm_model
 
-    def select_available_trains(self, trains: List[Train]) -> Train:
-        filtered = self.filter_trains_by_time(trains)
+    def _parse_page(self) -> BeautifulSoup:
+        return parse_html(self.book_resp.content)
+
+    def select_available_trains(
+        self, trains: List[Train], time_key: str = "outbound_time"
+    ) -> Train:
+        filtered = self.filter_trains_by_time(trains, time_key)
 
         if not filtered:
-            input_time = self.data_dict.get("time")
+            input_time = self.data_dict.get(time_key)
             raise ValueError(f"No trains found within 90 minutes after {input_time}.")
 
         return self.find_shortest_train(filtered)
 
-    def filter_trains_by_time(self, trains: List[Train]) -> List[Train]:
-        input_time = self.data_dict.get("time")
+    def filter_trains_by_time(
+        self, trains: List[Train], time_key: str = "outbound_time"
+    ) -> List[Train]:
+        input_time = self.data_dict.get(time_key)
         if not input_time:
-            raise ValueError("Missing 'time' in data_dict (expected HH:MM).")
+            raise ValueError(f"Missing '{time_key}' in data_dict (expected HH:MM).")
 
         user_time = datetime.strptime(input_time, "%H:%M")
         user_end_time = user_time + timedelta(minutes=90)

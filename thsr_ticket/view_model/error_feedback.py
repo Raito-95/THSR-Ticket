@@ -17,6 +17,13 @@ class ErrorFeedback(AbstractViewModel):
         page = self._parser(html)
         items = page.find_all(**ERROR_FEEDBACK)
         for it in items:
-            self.errors.append(Error(it.text.strip()))
+            msg = it.get_text(" ", strip=True)
+            if msg:
+                self.errors.append(Error(msg))
+
+        for it in page.select(".error-content"):
+            msg = it.get_text(" ", strip=True)
+            if msg:
+                self.errors.append(Error(msg))
 
         return self.errors

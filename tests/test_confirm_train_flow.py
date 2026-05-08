@@ -1,6 +1,7 @@
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import Mock
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "thsr_ticket"))
@@ -14,7 +15,17 @@ class ConfirmTrainFlowTest(unittest.TestCase):
         return ConfirmTrainFlow(
             client=None,  # type: ignore[arg-type]
             book_resp=None,  # type: ignore[arg-type]
-            data_dict={"time": time_value},
+            data_dict={
+                "route": {"start": "taipei", "destination": "taichung"},
+                "trip": {
+                    "type": "one_way",
+                    "outbound": {
+                        "date": "2026/05/09",
+                        "time": time_value,
+                    },
+                },
+                "tickets": {"adult": 1},
+            },
             verbose=False,
         )
 
@@ -71,6 +82,53 @@ class ConfirmTrainFlowTest(unittest.TestCase):
         ]
         selected = flow.find_shortest_train(trains)
         self.assertEqual(11, selected.id)
+
+    def test_round_trip_submit_includes_return_train(self) -> None:
+        class FakeResponse:
+            content = b"""
+            <form id="BookingS2Form" action="/s2">
+              <input type="hidden" name="BookingS2Form:hf:0">
+              <label>
+                <input name="TrainQueryDataViewPanel:TrainGroup"
+                       type="radio"
+                       value="out"
+                       QueryCode="100"
+                       QueryDeparture="08:00"
+                       QueryArrival="08:10"/>
+              </label>
+              <label>
+                <input name="TrainQueryDataViewPanel2:TrainGroup"
+                       type="radio"
+                       value="back"
+                       QueryCode="200"
+                       QueryDeparture="18:00"
+                       QueryArrival="18:10"/>
+              </label>
+            </form>
+            """
+
+        client = Mock()
+        client.submit_train.return_value = FakeResponse()
+        flow = ConfirmTrainFlow(
+            client=client,
+            book_resp=FakeResponse(),  # type: ignore[arg-type]
+            data_dict={
+                "route": {"start": "taipei", "destination": "taichung"},
+                "trip": {
+                    "type": "round_trip",
+                    "outbound": {"date": "2026/05/09", "time": "08:00"},
+                    "return": {"date": "2026/05/10", "time": "18:00"},
+                },
+                "tickets": {"adult": 1},
+            },
+            verbose=False,
+        )
+
+        flow.run()
+
+        params = client.submit_train.call_args.args[0]
+        self.assertEqual("out", params["TrainQueryDataViewPanel:TrainGroup"])
+        self.assertEqual("back", params["TrainQueryDataViewPanel2:TrainGroup"])
 
 
 if __name__ == "__main__":

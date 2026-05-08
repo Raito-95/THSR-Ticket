@@ -12,7 +12,7 @@ class HTTPConfig:
     class HTTPHeader:
         USER_AGENT = (
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-            "(KHTML, like Gecko) Chrome/42.0.2311.135 Safari/537.36 Edge/12.246"
+            "(KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
         )
         ACCEPT_HTML = (
             "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"

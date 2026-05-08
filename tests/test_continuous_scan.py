@@ -14,13 +14,34 @@ import main as app_main
 class ContinuousScanIntegrationTest(unittest.TestCase):
     def setUp(self) -> None:
         self.profile = {
-            "start_station": "2",
-            "dest_station": "7",
-            "date": "2026/03/30",
-            "time": "08:00",
-            "ID_number": "A123456789",
-            "phone_number": "0912345678",
-            "email_address": "user@example.com",
+            "route": {"start": 2, "destination": 7},
+            "trip": {
+                "type": "one_way",
+                "outbound": {
+                    "date": "2026/03/30",
+                    "time": "08:00",
+                    "train_no": "",
+                },
+                "return": {
+                    "date": "",
+                    "time": "",
+                    "train_no": "",
+                },
+            },
+            "search": {"method": "time", "train_type": "all"},
+            "seat": {"car": "standard", "preference": "window"},
+            "tickets": {
+                "adult": 1,
+                "child": 0,
+                "disabled": 0,
+                "elder": 0,
+                "college": 0,
+            },
+            "passenger": {
+                "id": "A123456789",
+                "phone": "0912345678",
+                "email": "user@example.com",
+            },
         }
 
     def test_keep_scanning_until_booking_success(self) -> None:

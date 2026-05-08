@@ -23,25 +23,23 @@ class TicketBookingValidator:
 
     def input_profile(self):
         while True:
-            self.profile = {
-                "start_station": self.get_valid_input(
-                    "Please enter the start station number (1-12): ",
-                    self.is_valid_station,
-                    "Invalid station number. Please enter a number between 1 and 12.",
-                    int,
-                ),
-                "dest_station": self.get_valid_input(
-                    "Please enter the destination station number (1-12): ",
-                    self.is_valid_station,
-                    "Invalid station number. Please enter a number between 1 and 12.",
-                    int,
-                ),
-                "date": self.get_valid_input(
-                    "Please enter the date (YYYY/MM/DD): ",
-                    self.is_valid_date,
-                    "Invalid date format or past date. Please use format YYYY/MM/DD (e.g., 2025/01/01).",
-                ),
-            }
+            start_station = self.get_valid_input(
+                "Please enter the start station number (1-12): ",
+                self.is_valid_station,
+                "Invalid station number. Please enter a number between 1 and 12.",
+                int,
+            )
+            dest_station = self.get_valid_input(
+                "Please enter the destination station number (1-12): ",
+                self.is_valid_station,
+                "Invalid station number. Please enter a number between 1 and 12.",
+                int,
+            )
+            travel_date = self.get_valid_input(
+                "Please enter the date (YYYY/MM/DD): ",
+                self.is_valid_date,
+                "Invalid date format or past date. Please use format YYYY/MM/DD (e.g., 2025/01/01).",
+            )
 
             time = self.convert_to_timeslot(
                 self.get_valid_input(
@@ -49,17 +47,54 @@ class TicketBookingValidator:
                     self.is_valid_24hr_time,
                     "Invalid time format. Please use 24-hour format HH:MM (e.g., 12:30).",
                 ),
-                self.profile["date"],
+                travel_date,
             )
-            self.profile["time"] = time
-
-            self.profile["ID_number"] = input("Please enter your ID number: ")
-            self.profile["phone_number"] = input("Please enter your phone number: ")
-            self.profile["email_address"] = self.get_valid_input(
+            passenger_id = input("Please enter your ID number: ")
+            phone = input("Please enter your phone number: ")
+            email = self.get_valid_input(
                 "Please enter your email address: ",
                 self.is_valid_email,
                 "Invalid email address format. Please enter a valid address (e.g., johndoe@example.com).",
             )
+            self.profile = {
+                "route": {
+                    "start": start_station,
+                    "destination": dest_station,
+                },
+                "trip": {
+                    "type": "one_way",
+                    "outbound": {
+                        "date": travel_date,
+                        "time": time,
+                        "train_no": "",
+                    },
+                    "return": {
+                        "date": "",
+                        "time": "",
+                        "train_no": "",
+                    },
+                },
+                "search": {
+                    "method": "time",
+                    "train_type": "all",
+                },
+                "seat": {
+                    "car": "standard",
+                    "preference": "window",
+                },
+                "tickets": {
+                    "adult": 1,
+                    "child": 0,
+                    "disabled": 0,
+                    "elder": 0,
+                    "college": 0,
+                },
+                "passenger": {
+                    "id": passenger_id,
+                    "phone": phone,
+                    "email": email,
+                },
+            }
 
             self.display_profile()
 
@@ -70,13 +105,26 @@ class TicketBookingValidator:
 
     def display_profile(self):
         print("\nPlease confirm your profile:")
-        for key, value in self.profile.items():
-            if key in ["start_station", "dest_station"]:
-                try:
-                    value = StationMapping(value).name
-                except Exception:
-                    value = f"Station {value}"
-            print(f"{key.replace('_', ' ').title()}: {value}")
+        route = self.profile.get("route", {})
+        trip = self.profile.get("trip", {})
+        outbound = trip.get("outbound", {})
+        passenger = self.profile.get("passenger", {})
+
+        for label, station in [
+            ("Start Station", route.get("start")),
+            ("Destination Station", route.get("destination")),
+        ]:
+            try:
+                station_text = StationMapping(station).name
+            except Exception:
+                station_text = f"Station {station}"
+            print(f"{label}: {station_text}")
+
+        print(f"Travel Date: {outbound.get('date')}")
+        print(f"Travel Time: {outbound.get('time')}")
+        print(f"ID Number: {passenger.get('id')}")
+        print(f"Phone Number: {passenger.get('phone')}")
+        print(f"Email Address: {passenger.get('email')}")
 
     def confirm_profile(self):
         confirmation = (

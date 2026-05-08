@@ -6,6 +6,9 @@ from requests.models import Response
 
 from configs.web.param_schema import ConfirmTicketModel, ConfirmTicketRequestParams
 from remote.http_request import HTTPRequest
+from controller.form_data import compose_form_defaults, parse_form_action
+from controller.profile_config import normalize_profile
+from html_parser import parse_html
 
 
 class ConfirmTicketFlow:
@@ -18,22 +21,25 @@ class ConfirmTicketFlow:
     ):
         self.client = client
         self.train_resp = train_resp
-        self.user_profile = user_profile
+        self.user_profile = normalize_profile(user_profile)
         self.verbose = verbose
 
     def run(self) -> Tuple[Response, ConfirmTicketModel]:
-        page = BeautifulSoup(self.train_resp.content, features="html.parser")
+        page = parse_html(self.train_resp.content)
+        form_id = self.detect_ticket_form_id(page)
+        form_mark_name = f"{form_id}:hf:0"
         is_early_bird = self.check_if_early_bird(page)
 
         if self.verbose:
             print(f"I: Early bird ticket detected: {is_early_bird}")
 
-        data = {
+        data = compose_form_defaults(page, form_id)
+        data.update({
             "dummyId": self.user_profile["ID_number"],
             "dummyPhone": self.user_profile["phone_number"],
             "email": self.user_profile["email_address"],
             "TicketMemberSystemInputPanel:TakerMemberSystemDataView:memberSystemRadioGroup": self.parse_member_radio(page),
-            "BookingS3FormSP:hf:0": "",
+            form_mark_name: "",
             "idInputRadio": 0,
             "diffOver": 1,
             "agree": "on",
@@ -44,8 +50,7 @@ class ConfirmTicketFlow:
             "isEarlyBirdRegister": 0 if is_early_bird else 1,
             "isSPromotion": 1,
             "isMustBeCard": 1,
-            "idNumber": self.user_profile["ID_number"],
-        }
+        })
 
         if is_early_bird:
             if self.verbose:
@@ -58,10 +63,32 @@ class ConfirmTicketFlow:
             )
 
         ticket_model = ConfirmTicketModel(**data)
-        json_params = ticket_model.model_dump_json(by_alias=True)
-        dict_params = json.loads(json_params)
-        resp = self.client.submit_ticket(cast(ConfirmTicketRequestParams, dict_params))
+        model_params = json.loads(
+            ticket_model.model_dump_json(by_alias=True, exclude_none=True)
+        )
+        dict_params = dict(data)
+        dict_params.update(
+            self._filter_model_params_for_form(model_params, form_mark_name)
+        )
+        resp = self.client.submit_ticket(
+            cast(ConfirmTicketRequestParams, dict_params),
+            action_url=parse_form_action(page, form_id),
+        )
         return resp, ticket_model
+
+    def _filter_model_params_for_form(
+        self, model_params: dict, form_mark_name: str
+    ) -> dict:
+        filtered = dict(model_params)
+        if form_mark_name != "BookingS3FormSP:hf:0":
+            filtered.pop("BookingS3FormSP:hf:0", None)
+        return filtered
+
+    def detect_ticket_form_id(self, page: BeautifulSoup) -> str:
+        for form_id in ("BookingS3FormSP", "BookingS3Form"):
+            if page.find("form", attrs={"id": form_id}):
+                return form_id
+        raise ValueError("No ticket confirmation form found.")
 
     def parse_member_radio(self, page: BeautifulSoup) -> str:
         candidates = page.find_all(

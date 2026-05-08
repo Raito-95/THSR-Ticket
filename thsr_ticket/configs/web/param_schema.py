@@ -114,8 +114,10 @@ ConfirmTrainRequestParams = TypedDict(
     "ConfirmTrainRequestParams",
     {
         "TrainQueryDataViewPanel:TrainGroup": str,
+        "TrainQueryDataViewPanel2:TrainGroup": str,
         "BookingS2Form:hf:0": str,
     },
+    total=False,
 )
 
 ConfirmTicketRequestParams = TypedDict(
@@ -273,7 +275,7 @@ class BookingModel(BaseModel):
 
     @field_validator("outbound_time", "inbound_time", mode="before")
     def check_time(cls, value):
-        if value is None:
+        if value is None or value == "":
             return value
         if value not in AVAILABLE_TIME_TABLE:
             raise ValueError(f"Unknown time string: {value}")
@@ -323,6 +325,9 @@ class Train(BaseModel):
 
 class ConfirmTrainModel(BaseModel):
     selected_train: str = Field(..., alias="TrainQueryDataViewPanel:TrainGroup")
+    return_selected_train: Optional[str] = Field(
+        None, alias="TrainQueryDataViewPanel2:TrainGroup"
+    )
     form_mark: str = Field("", alias="BookingS2Form:hf:0")
 
 
@@ -343,7 +348,7 @@ class ConfirmTicketModel(BaseModel):
     personal_id: str = Field(..., alias="dummyId")
     phone_num: str = Field(..., alias="dummyPhone")
     email: str = Field("", alias="email")
-    id_number: str = Field(..., alias="idNumber")
+    id_number: Optional[str] = Field(None, alias="idNumber")
 
     member_radio: str = Field(
         ...,
